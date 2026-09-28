@@ -111,7 +111,7 @@ startet der Container mit `NoClassDefFoundError`.
 ## Schritt 4: Image bauen
 
 ```
-docker build -t java-api-<dein-name>:1.0 .
+docker build -t java-api:1.0 .
 ```
 
 ## Schritt 5: Container starten
@@ -120,8 +120,7 @@ Auf dem geteilten Docker-Host wuerden feste Ports (`-p 8080:8080`) zwischen den
 Teilnehmern kollidieren. Deshalb den Host-Port von Docker zufaellig vergeben lassen:
 
 ```
-docker run -d --name java-api-<dein-name> -p 8080 java-api-<dein-name>:1.0
-docker port java-api-<dein-name> 8080/tcp
+docker run -d --name java-api -p 8080:8080 java-api:1.0
 ```
 
 ## Schritt 6: API testen
@@ -129,8 +128,8 @@ docker port java-api-<dein-name> 8080/tcp
 Den Port aus Schritt 6 einsetzen:
 
 ```
-curl http://localhost:<port>/api/health
-curl http://localhost:<port>/api/hello
+curl http://localhost:8080/api/health
+curl http://localhost:8080/api/hello
 ```
 
 Erwartete Ausgabe:
@@ -155,18 +154,18 @@ CMD ["java", "Main"]
 ```
 
 ```
-docker build -f Dockerfile.singlestage -t java-api-<dein-name>-singlestage:1.0 .
-docker images java-api-<dein-name>
-docker images java-api-<dein-name>-singlestage
+docker build -f Dockerfile.singlestage -t java-api-singlestage:1.0 .
+docker images java-api
+docker images java-api-singlestage
 ```
 
-Im Test (docker11.t3isp.de, `eclipse-temurin:21-*-alpine`): Multi-Stage-Image ca. **74 MB**,
+Multi-Stage-Image ca. **74 MB**,
 Single-Stage-Image ca. **184 MB** - mehr als doppelt so gross, nur weil Compiler und
 Build-Werkzeuge mitgeschleppt werden.
 
 ## Aufraeumen
 
 ```
-docker rm -f java-api-<dein-name>
-docker rmi java-api-<dein-name>:1.0 java-api-<dein-name>-singlestage:1.0
+docker rm -f java-api
+docker rmi java-api:1.0 java-api-singlestage:1.0
 ```
