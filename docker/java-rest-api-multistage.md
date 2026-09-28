@@ -10,20 +10,14 @@ Ein Multi-Stage-Build trennt das **Bauen** einer Anwendung vom **Ausfuehren**:
 Der Compiler, Quellcode und alle Build-Tools landen NICHT im finalen Image - das Image
 wird kleiner und hat eine kleinere Angriffsflaeche.
 
-## Schritt 1: Verbindung zum Docker-Host
-
-```
-ssh -i ~/.ssh/id_ed25519_nopass root@docker11.t3isp.de
-```
-
-## Schritt 2: Arbeitsverzeichnis anlegen
+## Schritt 1: Arbeitsverzeichnis anlegen
 
 ```
 mkdir -p ~/java-api-<dein-name>
 cd ~/java-api-<dein-name>
 ```
 
-## Schritt 3: Die REST-API (Main.java)
+## Schritt 2: Die REST-API (Main.java)
 
 Kein Framework, kein Maven noetig - nur der eingebaute `com.sun.net.httpserver` aus dem
 JDK. Zwei Endpunkte: `/api/health` und `/api/hello`.
@@ -87,7 +81,7 @@ public class Main {
 }
 ```
 
-## Schritt 4: Das Multi-Stage Dockerfile
+## Schritt 3: Das Multi-Stage Dockerfile
 
 ```
 # vi Dockerfile
@@ -110,13 +104,13 @@ CMD ["java", "Main"]
 `COPY --from=build` das Muster `Main*.class` verwenden, nicht nur `Main.class` - sonst
 startet der Container mit `NoClassDefFoundError`.
 
-## Schritt 5: Image bauen
+## Schritt 4: Image bauen
 
 ```
 docker build -t java-api-<dein-name>:1.0 .
 ```
 
-## Schritt 6: Container starten
+## Schritt 5: Container starten
 
 Auf dem geteilten Docker-Host wuerden feste Ports (`-p 8080:8080`) zwischen den
 Teilnehmern kollidieren. Deshalb den Host-Port von Docker zufaellig vergeben lassen:
@@ -126,7 +120,7 @@ docker run -d --name java-api-<dein-name> -p 8080 java-api-<dein-name>:1.0
 docker port java-api-<dein-name> 8080/tcp
 ```
 
-## Schritt 7: API testen
+## Schritt 6: API testen
 
 Den Port aus Schritt 6 einsetzen:
 
@@ -142,7 +136,7 @@ Erwartete Ausgabe:
 {"message":"Hallo von Java!","host":"<container-id>"}
 ```
 
-## Schritt 8 (optional): Groessenvergleich mit Single-Stage
+## Schritt 7 (optional): Groessenvergleich mit Single-Stage
 
 Zum Vergleich ein Image ohne Multi-Stage bauen (JDK + Compiler bleiben mit drin):
 
