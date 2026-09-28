@@ -41,5 +41,5 @@ docker run -d -t --name container-ubuntu2 myubuntu:24.04-ping
 # Ersten Container -> 2. anpingen 
 docker exec -it container-ubuntu2 bash 
 # jetzt den container-ubuntu anpingen 
-ping 172.17.0.3
+ping -c4 <ip-von-container-ubuntu>
 ```
