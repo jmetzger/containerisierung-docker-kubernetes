@@ -104,12 +104,6 @@ services:
       WORDPRESS_DB_HOST: database:3306
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress
-    healthcheck:                     # prüft, ob WordPress die DB erreicht
-      test: ["CMD-SHELL", "php -r '$$c = @new mysqli(\"database\", getenv(\"WORDPRESS_DB_USER\"), getenv(\"WORDPRESS_DB_PASSWORD\")); exit($$c->connect_errno ? 1 : 0);'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     volumes:
       - wordpress_plugins:/var/www/html/wp-content/plugins
       - wordpress_themes:/var/www/html/wp-content/themes
