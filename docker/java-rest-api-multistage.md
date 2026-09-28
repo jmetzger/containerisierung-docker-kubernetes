@@ -13,8 +13,8 @@ wird kleiner und hat eine kleinere Angriffsflaeche.
 ## Schritt 1: Arbeitsverzeichnis anlegen
 
 ```
-mkdir -p ~/java-api-<dein-name>
-cd ~/java-api-<dein-name>
+mkdir -p ~/java-api
+cd ~/java-api
 ```
 
 ## Schritt 2: Die REST-API (Main.java)
