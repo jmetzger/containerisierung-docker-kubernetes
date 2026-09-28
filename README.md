@@ -27,6 +27,7 @@
   1. Dockerfile - Examples 
      * [Ubuntu mit hello world](ubuntu-hello-world.md)
      * [Ubuntu mit ping](ubuntu-ping.md) 
+     * [Übung: Java REST-API mit Multi-Stage Dockerfile](docker/java-rest-api-multistage.md)
      * [Nginx mit content aus html-ordner](nginx-html-content.md)
   
   1. Docker-Netzwerk 
