@@ -120,6 +120,7 @@ Teilnehmern kollidieren. Deshalb den Host-Port von Docker zufaellig vergeben las
 
 ```
 docker run -d --name java-api -p 8080:8080 java-api:1.0
+docker container ls 
 ```
 
 ## Schritt 6: API testen
