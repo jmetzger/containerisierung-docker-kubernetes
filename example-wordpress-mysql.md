@@ -64,7 +64,7 @@ docker compose down
 http://<ip-des-servers>:8080
 ```
 
-## Healthcheck
+## Healthcheck - Variante 1: database läuft (vom db-container aus erreichbar)
 
 
 ```
@@ -115,4 +115,54 @@ volumes:
   wordpress_themes:
   wordpress_uploads:
 
+```
+
+## Healthcheck - Variante 2 (vom container database UND von wordpress erreichbar) 
+
+```
+# docker-compose.yaml
+
+services:
+  database:
+    image: mysql:5.7
+    volumes:
+      - database_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+
+  wordpress:
+    image: wordpress:latest
+    depends_on:
+      - database                     # Startreihenfolge, wartet NICHT auf Bereitschaft
+    ports:
+      - 8080:80
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: database:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    # Wartet, bis WordPress die DB mit seinen eigenen Zugangsdaten erreicht
+    entrypoint:
+      - bash
+      - -c
+      - |
+        until php -r '$$c = @new mysqli("database", getenv("WORDPRESS_DB_USER"), getenv("WORDPRESS_DB_PASSWORD")); exit($$c->connect_errno ? 1 : 0);'; do
+          echo "warte auf database..."
+          sleep 2
+        done
+        exec docker-entrypoint.sh apache2-foreground
+    volumes:
+      - wordpress_plugins:/var/www/html/wp-content/plugins
+      - wordpress_themes:/var/www/html/wp-content/themes
+      - wordpress_uploads:/var/www/html/wp-content/uploads
+
+volumes:
+  database_data:
+  wordpress_plugins:
+  wordpress_themes:
+  wordpress_uploads:
 ```
