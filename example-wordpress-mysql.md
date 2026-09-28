@@ -59,5 +59,5 @@ docker compose down
 
 ```
 # Im Browser mit ip des server -> ip a show eth0 # hier die externe ip raussuchen
-https://<ip-des-servers>:8080
+http://<ip-des-servers>:8080
 ```
