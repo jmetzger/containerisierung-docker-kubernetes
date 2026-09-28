@@ -20,5 +20,5 @@
 ## Anwendungsfälle 
 
   * Unterschiedliche Versionen einer Applikation (z.B. MariaDB-Server) auf einem Linux-System betreiben
-  * Gute Skalieren zu können (Beispiel: Bestellanzahl steigt (wir brauchen bei Ressourchen für Shop-Katalog und Warenkorb), aber nicht für Registrierung
+  * Gut Skalieren zu können (Beispiel: Bestellanzahl steigt (wir brauchen bei Ressourchen für Shop-Katalog und Warenkorb), aber nicht für Registrierung
     * Sprachagnostik /ein Service in python, einer in Rust 
