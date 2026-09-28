@@ -17,7 +17,10 @@ services:
 ```
 mkdir myubuntu 
 cd myubuntu 
-# nano Dockerfile 
+nano Dockerfile
+```
+
+```
 FROM ubuntu:latest
 RUN apt-get update; apt-get install -y inetutils-ping
 CMD ["/bin/bash"]
