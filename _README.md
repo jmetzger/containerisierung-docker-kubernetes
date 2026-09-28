@@ -1,4 +1,4 @@
-# Kubernetes Einführung
+# Containerisierung: Docker & Kubernetes
 
 
 ## Agenda
@@ -9,6 +9,12 @@
      * [Container vs. Virtuelle Maschine](#container-vs-virtuelle-maschine)
      * [Was ist ein Dockerfile](#was-ist-ein-dockerfile)
      * [Dockerfile - image kleinhalten](#dockerfile---image-kleinhalten)
+     * [Übung: Java REST-API mit Multi-Stage Dockerfile](#übung-java-rest-api-mit-multi-stage-dockerfile)
+     * [Docker installieren (Ubuntu, apt)](#docker-installieren-ubuntu-apt)
+     * [Bind-Mounts](#bind-mounts)
+     * [Bind-Mounts: Berechtigungen (Rocky/SELinux)](#bind-mounts-berechtigungen-rockyselinux)
+     * [Docker Security Overview](#docker-security-overview)
+     * [Image-Scan mit docker scan (snyk)](#image-scan-mit-docker-scan-snyk)
 
   1. Kubernetes - Überblick
      * [12-Factor-App - Design Prinzipien fuer Cloud Native Anwendungen](#12-factor-app---design-prinzipien-fuer-cloud-native-anwendungen)
@@ -526,6 +532,7 @@
      * [X-Forward-Header-For setzen in Ingress](#x-forward-header-for-setzen-in-ingress)
   
   1. Übungen 
+     * [Training 23.–25.09.2026: Pad-Zusammenfassung (alle Übungen)](#training-23–25092026-pad-zusammenfassung-alle-übungen)
      * [übung Tag 3](#übung-tag-3)
      * [übung Tag 4](#übung-tag-4)
   
@@ -651,6 +658,359 @@ RUN apt-get update && \
 
  * https://codeburst.io/docker-from-scratch-2a84552470c8
 
+
+### Übung: Java REST-API mit Multi-Stage Dockerfile
+
+
+### Hintergrund
+
+Ein Multi-Stage-Build trennt das **Bauen** einer Anwendung vom **Ausfuehren**:
+
+* Stage 1 (`build`): enthaelt den vollen JDK-Compiler, uebersetzt den Java-Code
+* Stage 2: enthaelt nur ein schlankes JRE + die fertige `.class`-Datei
+
+Der Compiler, Quellcode und alle Build-Tools landen NICHT im finalen Image - das Image
+wird kleiner und hat eine kleinere Angriffsflaeche.
+
+### Schritt 1: Verbindung zum Docker-Host
+
+```
+ssh -i ~/.ssh/id_ed25519_nopass root@docker11.t3isp.de
+```
+
+### Schritt 2: Arbeitsverzeichnis anlegen
+
+```
+mkdir -p ~/java-api-<dein-name>
+cd ~/java-api-<dein-name>
+```
+
+### Schritt 3: Die REST-API (Main.java)
+
+Kein Framework, kein Maven noetig - nur der eingebaute `com.sun.net.httpserver` aus dem
+JDK. Zwei Endpunkte: `/api/health` und `/api/hello`.
+
+```
+## vi Main.java
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
+        int port = 8080;
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+
+        server.createContext("/api/health", new HealthHandler());
+        server.createContext("/api/hello", new HelloHandler());
+
+        server.setExecutor(null);
+        server.start();
+        System.out.println("REST API laeuft auf Port " + port);
+    }
+
+    static class HealthHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String json = "{\"status\":\"UP\"}";
+            sendJson(exchange, 200, json);
+        }
+    }
+
+    static class HelloHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String host = "unknown";
+            try {
+                host = InetAddress.getLocalHost().getHostName();
+            } catch (Exception e) {
+                // ignore, bleibt "unknown"
+            }
+            String json = "{\"message\":\"Hallo von Java!\",\"host\":\"" + host + "\"}";
+            sendJson(exchange, 200, json);
+        }
+    }
+
+    static void sendJson(HttpExchange exchange, int status, String json) throws IOException {
+        byte[] body = json.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.sendResponseHeaders(status, body.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(body);
+        }
+    }
+}
+```
+
+### Schritt 4: Das Multi-Stage Dockerfile
+
+```
+## vi Dockerfile
+## Stage 1: Build - hier steht der komplette JDK-Compiler zur Verfuegung
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+COPY Main.java .
+RUN javac Main.java
+
+## Stage 2: Runtime - nur die fertige .class-Datei + schlankes JRE
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/Main*.class .
+EXPOSE 8080
+CMD ["java", "Main"]
+```
+
+**Wichtig:** `javac` erzeugt fuer jede innere Klasse eine eigene `.class`-Datei
+(`Main.class`, `Main$HealthHandler.class`, `Main$HelloHandler.class`). Deshalb im
+`COPY --from=build` das Muster `Main*.class` verwenden, nicht nur `Main.class` - sonst
+startet der Container mit `NoClassDefFoundError`.
+
+### Schritt 5: Image bauen
+
+```
+docker build -t java-api-<dein-name>:1.0 .
+```
+
+### Schritt 6: Container starten
+
+Auf dem geteilten Docker-Host wuerden feste Ports (`-p 8080:8080`) zwischen den
+Teilnehmern kollidieren. Deshalb den Host-Port von Docker zufaellig vergeben lassen:
+
+```
+docker run -d --name java-api-<dein-name> -p 8080 java-api-<dein-name>:1.0
+docker port java-api-<dein-name> 8080/tcp
+```
+
+### Schritt 7: API testen
+
+Den Port aus Schritt 6 einsetzen:
+
+```
+curl http://localhost:<port>/api/health
+curl http://localhost:<port>/api/hello
+```
+
+Erwartete Ausgabe:
+
+```
+{"status":"UP"}
+{"message":"Hallo von Java!","host":"<container-id>"}
+```
+
+### Schritt 8 (optional): Groessenvergleich mit Single-Stage
+
+Zum Vergleich ein Image ohne Multi-Stage bauen (JDK + Compiler bleiben mit drin):
+
+```
+## vi Dockerfile.singlestage
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /app
+COPY Main.java .
+RUN javac Main.java
+EXPOSE 8080
+CMD ["java", "Main"]
+```
+
+```
+docker build -f Dockerfile.singlestage -t java-api-<dein-name>-singlestage:1.0 .
+docker images java-api-<dein-name>
+docker images java-api-<dein-name>-singlestage
+```
+
+Im Test (docker11.t3isp.de, `eclipse-temurin:21-*-alpine`): Multi-Stage-Image ca. **74 MB**,
+Single-Stage-Image ca. **184 MB** - mehr als doppelt so gross, nur weil Compiler und
+Build-Werkzeuge mitgeschleppt werden.
+
+### Aufraeumen
+
+```
+docker rm -f java-api-<dein-name>
+docker rmi java-api-<dein-name>:1.0 java-api-<dein-name>-singlestage:1.0
+```
+
+### Docker installieren (Ubuntu, apt)
+
+
+### Walkthrough 
+
+```
+sudo apt-get update
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```
+
+### Läuft der Dienst (dockerd) 
+
+```
+systemctl status docker 
+```
+
+### docker-compose ? 
+
+```
+## herausfinden, ob docker compose installieren 
+docker compose version 
+```
+
+### Bind-Mounts
+
+
+
+### Example 1 
+
+```
+## andere Verzeichnis als das Heimatverzeichnis von root funktionieren aktuell nicht mit 
+## snap install docker 
+## wg. des Confinements 
+docker run -d -it  --name devtest --mount type=bind,source=/root,target=/app nginx:latest
+docker exec -it devtest bash 
+/# cd /app 
+```
+
+### Example 2 with /home/kurs 
+
+```
+## testen wo der DocumentRoot 
+docker run --rm -p 80:80 -it --name=nginx-test nginx bash 
+
+```
+
+### Bind-Mounts: Berechtigungen (Rocky/SELinux)
+
+
+### Step: 1
+
+```
+## als unpriviligierter Nutzer kurs 
+cd
+mkdir -p /home/kurs/nginx/html 
+cd /home/kurs/nginx/html
+echo "hallo welt" > index.html 
+sestatus
+docker run --rm -it --mount type=bind,source=/home/kurs/nginx/html,target=/usr/share/nginx/html --name=nginx-test nginx bash
+exit
+```
+
+### Step: 2
+
+```
+## Adjust permissions 
+cd /home/kurs/nginx/
+sudo chown -R kurs:kurs html
+## Neue Verzeichnisse und Dateien werden mit der Gruppe kurs angelegt
+chmod -R g+s html
+setfacl -d -m g::rwx html
+docker run --rm -it --mount type=bind,source=/home/kurs/nginx/html,target=/usr/share/nginx/html --name=nginx-test nginx bash
+## in container
+cd /usr/share/nginx/html
+mkdir rootdata
+cd rootdata
+touch foo
+
+```
+
+### Docker Security Overview
+
+
+### Run container under specific user: 
+
+```
+## user with id 40000 does not need to exist in container 
+docker run -it -u 40000 alpine 
+
+## user kurs needs to exist in container (/etc/passwd) 
+docker run -it -u kurs alpine 
+
+```
+
+### Default capabilities 
+
+  * Set everytime a new container is started as default 
+  * https://github.com/moby/moby/blob/master/profiles/seccomp/default.json
+
+
+### Run container with less capabilities 
+
+```
+cd
+mkdir captest
+cd captest 
+```
+
+```
+nano docker-compose.yml 
+```
+
+```
+services: 
+  nginx:
+    image: nginx 
+    cap_drop:
+      - CHOWN
+```
+
+```
+docker compose up -d
+## start and exits 
+docker compose ps 
+## 
+docker exec -it captest_nginx_1 bash 
+##/ touch /tmp/foo; chown 10000 /tmp/foo  
+
+## what happened -> wants to do chown, but it is not allowed 
+docker logs captest_nginx_1 
+
+```
+
+```
+docker compose down 
+```
+
+
+### Reference:
+
+  * https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html
+  * https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick
+  * man capabilities
+
+### Image-Scan mit docker scan (snyk)
+
+
+### Prerequisites 
+
+```
+You need to be logged in on docker hub with docker login 
+(with your account credentials
+```
+
+
+### Example 
+
+```
+## Snyk (docker scan) 
+docker help scan
+docker scan --json --accept-license dockertrainereu/jm-hello-docker  > result.json
+```
 
 ## Kubernetes - Überblick
 
@@ -10352,10 +10712,13 @@ Ein Summary enthält direkt **Perzentile**, allerdings:
 ### Achtung: Bitte kein Prometheus-Agent verwenden
 
 
+### Was dann ? 
+
+  * Nehmt den Operator von Prometheus 
+
 ### Warum ?
 
- * Coole Objekte wie PodMonitor, ServiceMonitor, PrometheusRules funktionieren
- * Das ist schlecht und macht Dein unnötig schwer.
+ * Coole Objekte wie PodMonitor, ServiceMonitor, PrometheusRules funktionieren nicht !
  * Dann musst du nämlich die alten ScrapeConfigs verwenden (IHHHHH !)
 
 ### Prometheus / Grafana Stack installieren
@@ -27490,6 +27853,445 @@ spec:
   * https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#configuration-snippet
 
 ## Übungen 
+
+### Training 23.–25.09.2026: Pad-Zusammenfassung (alle Übungen)
+
+
+**Zeitraum:** 23.09. – 25.09.2026
+**Quelle:** [yopad.eu/p/kubernetes](https://yopad.eu/p/kubernetes) (Stand 25.09.2026)
+
+Dieses Dokument fasst das gemeinsame Etherpad des Trainings zusammen: alle Übungen und Infos in der Reihenfolge, in der wir sie durchgegangen sind, plus Zeitplan und Agenda-Status.
+
+---
+
+### Organisatorisches
+
+| Was | Wo |
+|---|---|
+| Dokumentation / Agenda | [README.md](../README.md) |
+| Jochen bewerten | <https://reviews.appv2.t3isp.de/E4U6> |
+| Newsletter | j.metzger@t3company.de |
+| Bastion-Client (SSH) | `client-aok.do.t3isp.de`, Port 22 |
+| SSH-Client für Windows | [PuTTY](https://the.earth.li/~sgtatham/putty/latest/w64/putty.exe) |
+
+Die Zuordnung der Teilnehmer zu den Logins `tln1` – `tln9` steht im Pad und wird hier bewusst nicht veröffentlicht.
+
+#### Zeitplanung
+
+| Zeit | Block |
+|---|---|
+| 09:00 – 10:30 | Block I |
+| 10:30 – 10:45 | Frühstück |
+| 10:45 – 12:15 | Block II |
+| 12:15 – 13:15 | Mittag |
+| 13:15 – 14:45 | Block III |
+| 14:45 – 15:00 | Teatime |
+| 15:00 – 16:30 | Block IV |
+
+---
+
+### Tag 1 – Container, Kubernetes-Architektur, Pods, Deployments, Services
+
+#### Info 1.1 – Docker-Container auf dem Linux-System
+
+Jochen malt: Wie ein Container auf dem Linux-System aufgebaut ist (Namespaces, Cgroups, Layer).
+
+#### Info 1.2 – Docker Container
+
+* [Was ist ein Container?](../container.md)
+
+#### Info 1.3 – Docker Images
+
+* [Was sind Container Images?](../container-images.md)
+
+#### Info 1.4 – Schaubild Architektur
+
+* [Übersicht Architektur](../architektur.md)
+
+#### Info 1.5 – Kubernetes Aufbau
+
+* [Kubernetes Architektur](../kubernetes/architecture.md)
+
+#### Übung 1.6 – Zugang zum Trainings-Client
+
+Mit PuTTY oder `ssh` auf den Bastion-Client verbinden:
+
+```bash
+ssh tln<x>@client-aok.do.t3isp.de
+```
+
+#### Übung 1.7 – kubectl einrichten
+
+* [kubectl einrichten mit Namespace](../kubectl/kubectl-einrichten.md)
+
+#### Übung 1.8 – Pod mit `kubectl run`
+
+* [kubectl run – Beispiel](../kubectl/run-with-example.md)
+
+#### Info 1.9 – Applikation aus Standardobjekten bauen
+
+* [Bauen einer Webanwendung mit Resource-Objekten](../bauen-einer-webanwendung.md)
+
+#### Info 1.10 – Anatomie einer Webanwendung
+
+* [Anatomie einer Webanwendung](../anatomie-einer-webanwendung.md)
+
+#### Übung 1.11 – Pod mit Manifest
+
+* [Pod nginx (Manifest)](../kubectl-examples/01-pod-nginx.md)
+
+#### Übung 1.12 – Walkthrough: ReplicaSet erstellen
+
+* [ReplicaSet – Walkthrough Erstellen](../kubectl-examples/01a-replicaset-nginx.md#walkthrough-erstellen)
+
+#### Übung 1.13 – ReplicaSet erstellen
+
+Nur den Punkt „Erstellen" bearbeiten.
+
+* [ReplicaSet nginx](../kubectl-examples/01a-replicaset-nginx.md)
+
+#### Übung 1.14 – Deployment
+
+* [Deployment nginx](../kubectl-examples/03-nginx-deployment.md)
+
+#### Übung 1.15 – Services (ClusterIP)
+
+* [Service – Example I: ClusterIP](../kubectl-examples/03b-service.md#example-i--service-with-clusterip)
+
+#### Übung 1.16 – Netzverbindung testen
+
+```bash
+## IP-Adresse eines Pods aus dem Deployment ermitteln
+kubectl get pods -o wide
+
+## IP des Services
+kubectl get svc svc-nginx -o wide
+
+## Test-Pod starten (wird nach dem Beenden automatisch gelöscht)
+kubectl run podtest --rm -it --image busybox
+```
+
+Innerhalb des Test-Pods:
+
+```bash
+ping -c4 <pod-ip>
+wget -O - <pod-ip>
+ping -c4 <cluster-ip>
+wget -O - <cluster-ip>
+exit
+```
+
+#### Übung 1.17 – NodePort
+
+* [Service – Example II: NodePort](../kubectl-examples/03b-service.md#example-ii--short-version-nodeport)
+
+#### Übung 1.18 – LoadBalancer (Example III)
+
+* [Service – Example III: LoadBalancer / ExternalIP](../kubectl-examples/03b-service.md#example-iii-service-mit-loadbalancer-externalip)
+
+#### Übung 1.19 – DNS-basierte Verbindungen
+
+* [DNS Resolution – Services](../kubernetes-networks/dns-resolution-services.md)
+
+#### Info 1.20 – Ingress Controller
+
+* [Traefik Ingress Controller mit Helm installieren](../ingress/traefik/install-with-helm.md)
+
+---
+
+### Tag 2 – Ingress, ConfigMaps, Secrets, Vault, Helm
+
+#### Übung 2.1 – Ingress mit Hostnamen (Schritt 1: Deployment und Services)
+
+Vorher aufräumen:
+
+```bash
+cd
+cd manifests/04-service
+kubectl delete -f .
+```
+
+* [Ingress mit Traefik und Hostnamen](../kubectl-examples/04-ingress-traefik-with-hostnames-deployment.md)
+
+#### Übung 2.2 – Ingress bis Schritt 4.1 (inklusive)
+
+Thema: `kind` und die „Landkarte" der API-Groups.
+
+#### Übung 2.3 – Ingress mit SSL / TLS
+
+* [Ingress-Objekt mit TLS erstellen (Schritt 3)](../ingress/https-letsencrypt-ingress-traefik.md#schritt-3-ingress-objekt-mit-tls-erstellen)
+
+#### Übung 2.4 – ConfigMap mit MariaDB (Schritt 1 + 2)
+
+* [ConfigMap Example MariaDB](../kubectl-examples/06a-configmap-mariadb.md)
+
+#### Übung 2.5 – Umbau auf Secret
+
+Secret-Manifest per Dry-Run erzeugen:
+
+```bash
+kubectl create secret generic mariadb-secret \
+  --from-literal=MARIADB_ROOT_PASSWORD=<passwort> \
+  --dry-run=client -o yaml > 01-secrets.yml
+```
+
+Dann in `02-deploy.yml` anpassen:
+
+* `configMapRef:` → `secretRef:`
+* `mariadb-configmap` → `mariadb-secret`
+
+```bash
+kubectl apply -f .
+kubectl get pods   # Läuft der Pod?
+```
+
+#### Info 2.6 – Vault
+
+* [HashiCorp Vault – Architektur einfach erklärt](../hashicorp-vault/architektur-einfach-erklaert.md)
+* Ausführlich im Advanced-Workshop: [workshop-kubernetes-advanced-2026-Q3](https://github.com/jmetzger/workshop-kubernetes-advanced-2026-Q3/blob/main/hashicorp-vault/architektur-einfach-erklaert.md)
+
+#### Info 2.7 – Helm Grundlagen
+
+* [Helm Grundlagen](../helm/grundlagen.md)
+
+#### Übung 2.8 – Helm Chart installieren (Schritt 1)
+
+* [MariaDB mit Helm (cloudpirates)](../exercises/install/mariadb-cloudpirates.md)
+
+#### Übung 2.9 – Helm Chart Upgrade (Schritt 2)
+
+* [Upgrade auf neue Version](../exercises/install/mariadb-cloudpirates.md#schritt-2-exercise-upgrade-to-new-version)
+
+#### Übung 2.10 – Upgrade mit Deinstallation (Schritt 3)
+
+* [Upgrade mit Deinstallation](../exercises/install/mariadb-cloudpirates.md#schritt-3-exercise-upgrade-to-new-version)
+
+---
+
+### Tag 3 – CNCF, Storage, RBAC, QoS, Autoscaling, StatefulSets, Monitoring
+
+#### Übung 3.1 – CNCF Landscape
+
+* <https://landscape.cncf.io>
+
+#### Übung 3.2 – NFS mit Pod (CSI)
+
+* [NFS Exercise – Persistent Volume Claim (ab Step 3)](../kubernetes-csi/nfs-exercise.md#step-3-persistent-volume-claim)
+
+#### Übung 3.3 – Traefik: RBAC-Analyse
+
+```bash
+kubectl get ns                      # Gibt es einen Namespace "ingress"?
+kubectl -n ingress get sa
+kubectl -n ingress get sa traefik
+```
+
+**Quizfrage:** Ihr wollt herausfinden, ob im Traefik-Pod wirklich der ServiceAccount `traefik` eingehängt ist. Wie seht ihr das?
+
+```bash
+kubectl -n ingress get pod <traefik-pod> -o yaml | grep serviceAccount
+```
+
+Weiter mit Rollen und ClusterRoles:
+
+```bash
+kubectl -n traefik get roles                   # Rolle traefik?
+kubectl get clusterroles | grep traefik
+kubectl get clusterrole <clusterrole-fuer-traefik> -o yaml
+```
+
+Siehe auch: [Kubernetes RBAC – was darf Traefik](../kubernetes-rbac/was-darf-traefik.md)
+
+#### Übung 3.4 – RoleBinding / ClusterRoleBinding
+
+```bash
+kubectl get clusterrolebinding | grep traefik-ingress
+```
+
+#### Info 3.5 – „Ich darf alles": ClusterRole
+
+Diskussion: Was bedeutet eine ClusterRole mit vollen Rechten, und warum sollte man das vermeiden.
+
+#### Übung 3.6 – Pod suchen und Quality of Service ablesen
+
+```bash
+kubectl describe pods <name-des-pods> | grep QoS
+```
+
+* Hintergrund: [Quality of Service – evict pods](../kubernetes/qos-class.md)
+
+#### Übung 3.7 – Horizontal Pod Autoscaler
+
+* [Kubernetes Autoscaling](../kubernetes/autoscaling.md)
+
+#### Übung 3.8 – StatefulSet
+
+* [Example StatefulSet](../kubectl-examples/10-statefulset.md)
+
+#### Info 3.9 – Monitoring
+
+* [Prometheus Monitoring Server (Overview)](../prometheus/overview.md)
+* [Prometheus / Grafana Stack installieren](../prometheus-grafana/install-with-helm.md)
+
+#### Übung 3.10 – Prometheus GUI
+
+* [Übung: Prometheus UI und PromQL](../prometheus-grafana/uebung-prometheus-ui-promql.md)
+
+#### Übung 3.11 – Metrics-Endpunkt direkt scrapen
+
+```bash
+kubectl run metrics-check -it --rm --image=curlimages/curl \
+  --restart=Never -- \
+  curl -s http://node-exporter.monitoring.svc.cluster.local:9100/metrics \
+  | head -40
+```
+
+* [Schritt 2: Metrics direkt ansehen](../prometheus-grafana/uebung-prometheus-ui-promql.md#schritt-2-metrics-direkt-ansehen)
+
+#### Übung 3.12 – Readiness Probe
+
+* [Übung: Readiness Probe mit HTTP](../kubectl-examples/03c-readiness-probe.md)
+
+---
+
+### Offene Themen / Wünsche aus dem Training
+
+* Kong Gateway Operator
+* PostgreSQL mit CloudNativePG → [HA mit dem Postgres Operator](../databases/postgresql/operator/cloudnativepg.md)
+
+---
+
+### Agenda-Status (Abgleich mit der offiziellen Agenda)
+
+Legende: ✅ behandelt · 🔄 laufend · ⬜ offen
+
+#### Kubernetes Grundlagen
+
+| Thema | Status |
+|---|---|
+| Motivation für Container und Möglichkeiten der Containertechnologie | ✅ |
+| Einführung in Containertechnologie und das Arbeiten mit Containern | ✅ |
+| Docker Ecosystem | ✅ |
+| Linux Kernelfunktionen | ✅ |
+| Vergleich Systemvirtualisierung und Container | ✅ |
+| Design-Prinzipien für Cloud-Native-Anwendungen | ⬜ |
+
+#### Einführung in Kubernetes
+
+| Thema | Status |
+|---|---|
+| Motivation für eine Orchestrierungsplattform | ✅ |
+| Vorteile und Kosten von Kubernetes | ✅ |
+| Eigenschaften von Kubernetes im Überblick | ⬜ |
+
+#### Kubernetes Architektur und Konzept
+
+| Thema | Status |
+|---|---|
+| System-Übersicht mit allen Komponenten (API Server, Controller Manager, Scheduler) | ✅ |
+| Installations-Optionen (Cloud, Minikube, etc.) | ⬜ |
+
+#### Setup der Arbeitsumgebung und Nutzen der CLI
+
+| Thema | Status |
+|---|---|
+| Config-File und der Arbeitsbereich (Context) | ✅ |
+| CLI-Tool (kubectl) | 🔄 |
+| Imperatives und deklaratives Management | ✅ |
+
+#### Pod-Konzept
+
+| Thema | Status |
+|---|---|
+| Pod-Konzept | ✅ |
+
+#### Flexibles Anwendungsdeployment
+
+| Thema | Status |
+|---|---|
+| Arbeiten mit Labels und Label-Selektoren | ✅ |
+
+#### Workloads
+
+| Thema | Status |
+|---|---|
+| Pods | ✅ |
+| Deployments | ✅ |
+| StatefulSets | ✅ (Übung 3.8) |
+| DaemonSets | ⬜ |
+| Jobs | ⬜ |
+
+#### Datenspeicher bereitstellen
+
+| Thema | Status |
+|---|---|
+| Einfache Volumes | ⬜ |
+| Persistente Volumes | ✅ (Übung 3.2) |
+
+#### Konfigurationsdaten und Secrets bereitstellen
+
+| Thema | Status |
+|---|---|
+| ConfigMaps | ✅ |
+| Secrets | ✅ |
+
+#### Netzwerkverbindungen bereitstellen
+
+| Thema | Status |
+|---|---|
+| Architektur des Kubernetes-Netzwerks | ⬜ |
+| Verbindungen zwischen Containern, Verbindungen nach außen | ✅ |
+| Load Balancing und NodePort | ✅ |
+| DNS-basierte Verbindungen | ✅ |
+| Ingress | ✅ (Übungen 2.1 – 2.3) |
+
+#### Steuerung, Überwachung und Kontrolle von Anwendungen
+
+| Thema | Status |
+|---|---|
+| Quality Class | ✅ (Übung 3.6) |
+| Health Checks für Pods (Container) | ✅ (Übung 3.12) |
+| Scheduling steuern (Taints und Tolerations) | ⬜ |
+
+#### Komplexe Anwendungen einfach deployen: Der Helm-Paketmanager
+
+| Thema | Status |
+|---|---|
+| Paketformat | ✅ |
+| Anwendungsdeployment vereinfachen | ✅ |
+| Anwendungsdeployment flexibel gestalten | ✅ |
+| Lifecycle-Management: Upgrade, Rollback und mehr | ✅ (Übungen 2.8 – 2.10) |
+| Helm Charts und die Community | ✅ |
+
+#### Troubleshooting
+
+| Thema | Status |
+|---|---|
+| Zugriff auf einen Pod (`kubectl exec`) | ⬜ fehlt noch |
+| Netzwerkverbindungen testen | ✅ |
+| Logging / Event-Infos des CLI-Tools | ⬜ |
+
+#### Zugriffskontrolle
+
+| Thema | Status |
+|---|---|
+| Rollenbasierte Zugriffskontrolle | ✅ (Übungen 3.3 – 3.5) |
+| Richtlinien | ⬜ |
+| Service Accounts | ✅ (Übung 3.3) |
+
+#### Dashboard und andere GUI
+
+| Thema | Status |
+|---|---|
+| Dashboard und andere GUI | ⬜ |
+
+#### Cluster-Erweiterungen
+
+| Thema | Status |
+|---|---|
+| Monitoring und Logging (Fluentd, Elastic, Prometheus) | ✅ (Übungen 3.9 – 3.11) |
+| Cluster DNS | ✅ |
+| CNCF und Ausblick → [landscape.cncf.io](https://landscape.cncf.io) | ✅ (Übung 3.1) |
 
 ### übung Tag 3
 
