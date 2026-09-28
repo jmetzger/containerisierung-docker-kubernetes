@@ -25,7 +25,7 @@ services:
 
   wordpress:
     image: wordpress:latest
-    depends_on:
+    depends_on: # wartet bis database gestartet ist. NICHT ob sie bereit ist 
       - database
     ports:
       - 8080:80
