@@ -23,6 +23,10 @@ Kein Framework, kein Maven noetig - nur der eingebaute `com.sun.net.httpserver` 
 JDK. Zwei Endpunkte: `/api/health` und `/api/hello`.
 
 ```
+nano Main.java
+```
+
+```
 # vi Main.java
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
