@@ -5,12 +5,10 @@ clear
 cd
 mkdir wp
 cd wp
-nano docker-compose.yml
+nano docker-compose.yaml
 ```
 
 ```
-# docker-compose.yaml
-
 services:
   database:
     image: mysql:5.7
