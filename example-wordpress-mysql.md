@@ -50,11 +50,12 @@ volumes:
 
 
 ```
-docker-compose up -d  # alle services im docker-compose.yaml starten und im
+docker compose version
+docker compose up -d  # alle services im docker-compose.yaml starten und im
                       # Hintergrund laufen lassen
-docker-compose logs   # Alle Logs dieses Projektes
-docker-compose ps     # alle container die zu diesem Projekt gehören
-docker-compose down
+docker compose logs   # Alle Logs dieses Projektes
+docker compose ps     # alle container die zu diesem Projekt gehören
+docker compose down
 # bitte keine start und stop -> immer stattdessen up und down
 ```
 
