@@ -8,8 +8,6 @@ cd bautest
 
 ```
 # nano docker-compose.yml
-version: "3.8"
-
 services:
   myubuntu:
     build: ./myubuntu
@@ -27,12 +25,11 @@ CMD ["/bin/bash"]
 
 ```
 cd ../
+ls -la 
 # wichtig, im docker-compose - Ordner seiend 
-#pwd 
-#~/bautest
-docker-compose up -d 
+docker compose up -d 
 # wird image gebaut und container gestartet 
 
 # Bei Veränderung vom Dockerfile, muss man den Parameter --build mitangeben 
-docker-compose up -d --build 
+docker compose up -d --build 
 ```
