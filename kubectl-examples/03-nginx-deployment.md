@@ -68,3 +68,8 @@ kubectl apply -f . && watch kubectl get pods
 kubectl apply -f . && kubectl get all && kubectl get pods -w
 ```
 
+## Deployment löschen 
+
+```
+kubectl delete -f .
+```
