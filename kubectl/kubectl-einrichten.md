@@ -14,6 +14,7 @@ ls -la
 
 ```
 kubectl cluster-info
+kubectl config view
 ```
 
 ## Arbeitsbereich konfigurieren 
