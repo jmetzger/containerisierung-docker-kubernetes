@@ -195,6 +195,7 @@
      * [Helm mit gitlab ci/cd ausrollen](#helm-mit-gitlab-cicd-ausrollen)
      * [Uebung: Unit Tests im Merge Request Dashboard](#uebung-unit-tests-im-merge-request-dashboard)
      * [Exercise: Docker Image bauen und in Registry pushen](#exercise-docker-image-bauen-und-in-registry-pushen)
+     * [Wie spielen Git, Jenkins und Kubernetes zusammen?](#wie-spielen-git-jenkins-und-kubernetes-zusammen)
     
   1. Helpful plugins
      * [Use shortnames for kubectl - commands](https://gist.github.com/doevelopper/ff4a9a211e74f8a2d44eb4afb21f0a38)
@@ -5189,6 +5190,85 @@ Erwartetes Verhalten (live verifiziert):
 laedt ihre Daten von `/api/...` nach - deshalb braucht es **beide** Routen
 (`/dashboard` und `/api`), sonst bleibt das Dashboard leer/fehlerhaft.
 
+### Variante 3: Wie Variante 2, aber zusaetzlich mit TLS (cert-manager) - und warum NICHT die Chart-Flags
+
+Der Chart bietet zwei Values, die das Dashboard "offiziell" ueber den Helm-Chart selbst
+freischalten wuerden:
+
+```yaml
+ports:
+  traefik:
+    expose:
+      default: true    # wuerde Port 8080 zusaetzlich am BESTEHENDEN traefik-Service publizieren
+ingressRoute:
+  dashboard:
+    enabled: true       # erzeugt automatisch eine IngressRoute fuer /dashboard + /api
+```
+
+**Davon lieber die Finger lassen, wenn der `traefik`-Service produktiv von mehreren
+Teilnehmern geteilt wird:**
+
+  * `ingressRoute.dashboard.middlewares` ist per Default leer - ohne zusaetzliche
+    Konfiguration waere das Dashboard komplett unauthentifiziert erreichbar.
+  * `ports.traefik.expose.default=true` aendert den **bestehenden** `traefik`-Service
+    (Typ `LoadBalancer`), an dem waehrend eines laufenden Trainings die Ingresses
+    **aller Teilnehmer** haengen (gemeinsame LoadBalancer-IP). Ein `helm upgrade`, das
+    Service-Ports aendert, kann bei DigitalOcean (DOKS) zu einer Neukonfiguration des
+    Load Balancers fuehren - das hat in der Vergangenheit schon zu Problemen gefuehrt.
+    Fuer ein reines Admin-Tool ist dieses Risiko waehrend eines laufenden Trainings
+    nicht gerechtfertigt.
+
+Stattdessen Variante 2 (oben) unveraendert nutzen - die haengt am bestehenden `web`/
+`websecure`-Entrypoint (Port 80/443, unveraendert) und fasst den `traefik`-Service nicht
+an. Fuer echtes TLS per Let's Encrypt dabei zusaetzlich beachten: **cert-manager
+reagiert per Ingress-Shim nur auf `cert-manager.io/cluster-issuer`-Annotationen an
+normalen `Ingress`-Objekten, nicht an der Traefik-CRD `IngressRoute`.** Das
+TLS-Zertifikat muss deshalb als eigenes `Certificate`-Objekt angelegt werden:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: traefik-dashboard-tls
+  namespace: ingress
+spec:
+  secretName: traefik-dashboard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - traefik-dashboard.<dein-name>.appv2.do.t3isp.de
+```
+
+Die `IngressRoute` aus Variante 2 dann um `websecure` und den `tls.secretName`
+erweitern:
+
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`traefik-dashboard.<dein-name>.appv2.do.t3isp.de`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
+      kind: Rule
+      middlewares:
+        - name: dashboard-auth
+      services:
+        - kind: TraefikService
+          name: api@internal
+  tls:
+    secretName: traefik-dashboard-tls
+```
+
+Live verifiziert (IQVIA-Training, 30.09.2026): Zertifikat wird `Ready`, `curl` ohne Auth
+liefert `401`, mit Auth `200` - alles ueber `https://`, ohne dass sich am `traefik`-Service
+etwas geaendert hat (`kubectl -n ingress get svc traefik` zeigt weiterhin nur `80,443`).
+
 ### Aufraeumen (Testressourcen)
 
 ```
@@ -9127,6 +9207,47 @@ https://gitlab.com/jmetzger/training-build-test-ci-cd-gitlab.git
 
   * Beispielprojekt (public): https://gitlab.com/jmetzger/training-build-test-ci-cd-gitlab
 
+### Wie spielen Git, Jenkins und Kubernetes zusammen?
+
+
+![Zusammenspiel von Git, Jenkins und Kubernetes](images/jenkins-git-kubernetes-zusammenspiel.svg)
+
+### Der Kernpunkt: Jenkins pusht das Image, aber nicht auf den Node
+
+Der haeufigste Denkfehler: "Jenkins deployt die Anwendung auf die Kubernetes-Nodes."
+Tatsaechlich hat Jenkins **nie eine Verbindung zu den Worker-Nodes** - es spricht nur
+mit zwei Systemen:
+
+1. **Container-Registry** - dorthin wird das frisch gebaute Image gepusht
+   (`docker build && docker push app:v2`).
+2. **Kubernetes-API-Server** - dort wird nur der *gewuenschte Zustand* aktualisiert
+   (`kubectl apply` / `helm upgrade`, z. B. neuer Image-Tag in einem Deployment).
+
+### Ablauf im Detail
+
+1. Ein Entwickler pusht Code in das Git-Repo.
+2. Ein Webhook (Push-Event) triggert einen Jenkins-Job.
+3. Jenkins baut das Docker-Image und pusht es mit einem neuen Tag in die Registry.
+4. Jenkins aktualisiert den gewuenschten Zustand im Kubernetes-Cluster
+   (`kubectl apply -f deployment.yml` oder `helm upgrade` mit dem neuen Image-Tag).
+5. Der Kubernetes-API-Server plant daraufhin ein Rollout auf einem passenden Node.
+6. **Der `kubelet` auf diesem Node zieht das neue Image komplett eigenstaendig** aus
+   der Registry (`docker pull app:v2`) - Jenkins ist an dieser Stelle nicht mehr
+   beteiligt.
+7. Der neue Pod (`app:v2`) startet, der alte Pod (`app:v1`) wird im Rahmen des
+   Rolling-Updates terminiert.
+
+### Warum das wichtig ist
+
+* Erklaert, warum ein Jenkins-Agent **keinen Netzwerkzugriff auf die Worker-Nodes**
+  braucht - nur auf Registry und Kubernetes-API.
+* Erklaert, warum ein fehlgeschlagener `ImagePullBackOff` **nichts mit Jenkins** zu tun
+  hat, sondern ein Problem zwischen `kubelet` und Registry ist (Credentials,
+  Netzwerk, falscher Tag).
+* Ist die Blaupause fuer GitOps-Ansaetze (z. B. Argo CD/Flux): dort ersetzt ein
+  Controller im Cluster lediglich Schritt 4 - er zieht den gewuenschten Zustand selbst
+  aus einem Git-Repo, statt dass Jenkins ihn per `kubectl apply` hineinschiebt.
+
 ## Helpful plugins
 
 ### Use shortnames for kubectl - commands
@@ -11499,7 +11620,7 @@ metadata:
   name: nfs-csi
 provisioner: nfs.csi.k8s.io
 parameters:
-  server: 10.135.0.14
+  server: 10.135.0.20
   share: /var/nfs
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
