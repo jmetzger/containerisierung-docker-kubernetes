@@ -1,0 +1,86 @@
+<svg viewBox="0 0 980 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Zusammenspiel von Git, Jenkins und Kubernetes</title>
+  <desc id="desc">Ein Entwickler pusht Code nach Git. Ein Webhook loest Jenkins aus, das ein neues Image baut und in die Registry pusht, und anschliessend per kubectl/helm die gewuenschte Version beim Kubernetes-API-Server hinterlegt. Der Kubernetes-API-Server plant das Rollout auf einem Node; der kubelet auf diesem Node zieht das neue Image unabhaengig und eigenstaendig aus der Registry und startet den neuen Pod, waehrend der alte Pod terminiert.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a1a2e"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="500" fill="#ffffff"/>
+
+  <!-- Developer -->
+  <rect x="30" y="235" width="110" height="50" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.5"/>
+  <text x="85" y="265" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Entwickler</text>
+
+  <!-- Git -->
+  <rect x="190" y="235" width="110" height="50" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.5"/>
+  <text x="245" y="265" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Git-Repo</text>
+
+  <!-- Jenkins -->
+  <rect x="350" y="235" width="120" height="50" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.5"/>
+  <text x="410" y="265" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Jenkins</text>
+
+  <!-- Kubernetes API -->
+  <rect x="570" y="235" width="150" height="50" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.5"/>
+  <text x="645" y="259" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Kubernetes</text>
+  <text x="645" y="275" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">API-Server</text>
+
+  <!-- Registry -->
+  <rect x="350" y="400" width="150" height="55" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.5"/>
+  <text x="425" y="423" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Container-</text>
+  <text x="425" y="439" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1a1a2e">Registry</text>
+
+  <!-- Node container -->
+  <rect x="800" y="150" width="150" height="260" rx="8" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="875" y="172" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#1a1a2e">Worker-Node</text>
+  <text x="875" y="192" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#2563eb">kubelet</text>
+
+  <!-- Pod v1 (terminating) -->
+  <rect x="815" y="210" width="120" height="55" rx="6" fill="none" stroke="#1a1a2e" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.55"/>
+  <text x="875" y="233" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1a1a2e" opacity="0.7">Pod app:v1</text>
+  <text x="875" y="248" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1a1a2e" opacity="0.7">(terminiert)</text>
+
+  <!-- Pod v2 (running, accent) -->
+  <rect x="815" y="300" width="120" height="55" rx="6" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <text x="875" y="323" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#2563eb">Pod app:v2</text>
+  <text x="875" y="338" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#2563eb">(neu, running)</text>
+
+  <!-- Arrow: Entwickler -> Git -->
+  <line x1="140" y1="260" x2="184" y2="260" stroke="#1a1a2e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="162" y="250" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1a1a2e">git push</text>
+
+  <!-- Arrow: Git -> Jenkins -->
+  <line x1="300" y1="260" x2="344" y2="260" stroke="#1a1a2e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="322" y="245" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">Webhook:</text>
+  <text x="322" y="257" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">push event</text>
+
+  <!-- Arrow: Jenkins -> Kubernetes API -->
+  <line x1="470" y1="260" x2="564" y2="260" stroke="#1a1a2e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="517" y="245" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">kubectl apply /</text>
+  <text x="517" y="257" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">helm upgrade (v2)</text>
+
+  <!-- Arrow: Kubernetes API -> Node (schedules) -->
+  <line x1="720" y1="260" x2="794" y2="260" stroke="#1a1a2e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="757" y="245" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">plant</text>
+  <text x="757" y="257" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">Rollout</text>
+
+  <!-- Arrow: Jenkins -> Registry (push) -->
+  <line x1="410" y1="285" x2="410" y2="394" stroke="#1a1a2e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="418" y="345" text-anchor="start" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">docker build &amp;</text>
+  <text x="418" y="358" text-anchor="start" font-family="sans-serif" font-size="10.5" fill="#1a1a2e">push app:v2</text>
+
+  <!-- Arrow: Registry -> Node kubelet (pull, accent - the non-obvious mechanism) -->
+  <path d="M 500 415 C 700 415, 720 300, 811 245" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-accent)"/>
+  <text x="700" y="400" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#2563eb">kubelet zieht selbststaendig:</text>
+  <text x="700" y="414" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#2563eb">docker pull app:v2</text>
+
+  <!-- Note -->
+  <text x="30" y="480" font-family="sans-serif" font-size="12" fill="#1a1a2e" font-style="italic">
+    Jenkins spricht nie direkt mit dem Node: es aktualisiert nur Registry und API-Server - den Image-Pull macht der kubelet eigenstaendig.
+  </text>
+</svg>

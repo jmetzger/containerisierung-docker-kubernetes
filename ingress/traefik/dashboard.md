@@ -138,6 +138,85 @@ Erwartetes Verhalten (live verifiziert):
 laedt ihre Daten von `/api/...` nach - deshalb braucht es **beide** Routen
 (`/dashboard` und `/api`), sonst bleibt das Dashboard leer/fehlerhaft.
 
+## Variante 3: Wie Variante 2, aber zusaetzlich mit TLS (cert-manager) - und warum NICHT die Chart-Flags
+
+Der Chart bietet zwei Values, die das Dashboard "offiziell" ueber den Helm-Chart selbst
+freischalten wuerden:
+
+```yaml
+ports:
+  traefik:
+    expose:
+      default: true    # wuerde Port 8080 zusaetzlich am BESTEHENDEN traefik-Service publizieren
+ingressRoute:
+  dashboard:
+    enabled: true       # erzeugt automatisch eine IngressRoute fuer /dashboard + /api
+```
+
+**Davon lieber die Finger lassen, wenn der `traefik`-Service produktiv von mehreren
+Teilnehmern geteilt wird:**
+
+  * `ingressRoute.dashboard.middlewares` ist per Default leer - ohne zusaetzliche
+    Konfiguration waere das Dashboard komplett unauthentifiziert erreichbar.
+  * `ports.traefik.expose.default=true` aendert den **bestehenden** `traefik`-Service
+    (Typ `LoadBalancer`), an dem waehrend eines laufenden Trainings die Ingresses
+    **aller Teilnehmer** haengen (gemeinsame LoadBalancer-IP). Ein `helm upgrade`, das
+    Service-Ports aendert, kann bei DigitalOcean (DOKS) zu einer Neukonfiguration des
+    Load Balancers fuehren - das hat in der Vergangenheit schon zu Problemen gefuehrt.
+    Fuer ein reines Admin-Tool ist dieses Risiko waehrend eines laufenden Trainings
+    nicht gerechtfertigt.
+
+Stattdessen Variante 2 (oben) unveraendert nutzen - die haengt am bestehenden `web`/
+`websecure`-Entrypoint (Port 80/443, unveraendert) und fasst den `traefik`-Service nicht
+an. Fuer echtes TLS per Let's Encrypt dabei zusaetzlich beachten: **cert-manager
+reagiert per Ingress-Shim nur auf `cert-manager.io/cluster-issuer`-Annotationen an
+normalen `Ingress`-Objekten, nicht an der Traefik-CRD `IngressRoute`.** Das
+TLS-Zertifikat muss deshalb als eigenes `Certificate`-Objekt angelegt werden:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: traefik-dashboard-tls
+  namespace: ingress
+spec:
+  secretName: traefik-dashboard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - traefik-dashboard.<dein-name>.appv2.do.t3isp.de
+```
+
+Die `IngressRoute` aus Variante 2 dann um `websecure` und den `tls.secretName`
+erweitern:
+
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`traefik-dashboard.<dein-name>.appv2.do.t3isp.de`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
+      kind: Rule
+      middlewares:
+        - name: dashboard-auth
+      services:
+        - kind: TraefikService
+          name: api@internal
+  tls:
+    secretName: traefik-dashboard-tls
+```
+
+Live verifiziert (IQVIA-Training, 30.09.2026): Zertifikat wird `Ready`, `curl` ohne Auth
+liefert `401`, mit Auth `200` - alles ueber `https://`, ohne dass sich am `traefik`-Service
+etwas geaendert hat (`kubectl -n ingress get svc traefik` zeigt weiterhin nur `80,443`).
+
 ## Aufraeumen (Testressourcen)
 
 ```
