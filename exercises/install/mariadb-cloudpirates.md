@@ -179,6 +179,10 @@ helm get values my-mariadb
 ### Änderung zwischen versionen (Warum trat der Fehler auf) 
 
 ```
+helm history my-mariadb
+```
+
+```
 helm get manifest my-mariadb --revision 2 > rev2.yaml
 helm get manifest my-mariadb --revision 3 > rev3.yaml
 # schaut nach serviceaccount
