@@ -124,6 +124,9 @@
   1. Kubernetes Ingress (HA Proxy)
      * [Install HA Proxy-IngressController](/ingress/ha-proxy/install-with-helm.md)
      * [Ingress mit ha proxy](kubectl-examples/04-ingress-haproxy-with-hostnames-deployment.md)
+
+  1. Kubernetes Ingress vs. Gateway API (Ausblick)
+     * [Ingress vs. Gateway API - warum der Standard wechselt](/kubernetes/ingress-vs-gateway-api.md)
   
   1. Kubernetes Praxis (Stateful Sets)
      * [Hintergrund statefulsets](/kubernetes/statefulsets.md)
