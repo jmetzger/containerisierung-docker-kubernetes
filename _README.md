@@ -8,14 +8,59 @@
      * [Was sind container images](#was-sind-container-images)
      * [Container vs. Virtuelle Maschine](#container-vs-virtuelle-maschine)
      * [Was ist ein Dockerfile](#was-ist-ein-dockerfile)
-     * [Dockerfile - image kleinhalten](#dockerfile---image-kleinhalten)
+  
+  1. Docker-Installation
+     * [BEST for Ubuntu : Install Docker from Docker Repo](#best-for-ubuntu--install-docker-from-docker-repo)
+  
+  1. Docker-Befehle 
+     * [Die wichtigsten Befehle](#die-wichtigsten-befehle)
+     * [Logs anschauen - docker logs - mit Beispiel nginx](#logs-anschauen---docker-logs---mit-beispiel-nginx)
+     * [docker run](#docker-run)
+     * [Docker container/image stoppen/löschen](#docker-containerimage-stoppenlöschen)
+     * [Docker containerliste anzeigen](#docker-containerliste-anzeigen)
+     * [Docker nicht verwendete Images/Container löschen](#docker-nicht-verwendete-imagescontainer-löschen)
+     * [Docker container analysieren](#docker-container-analysieren)
+     * [Docker container in den Vordergrund bringen - attach](#docker-container-in-den-vordergrund-bringen---attach)
+     * [Aufräumen - container und images löschen](#aufräumen---container-und-images-löschen)
+     * [Nginx mit portfreigabe laufen lassen](#nginx-mit-portfreigabe-laufen-lassen)
+  
+  1. Dockerfile - Examples 
+     * [Ubuntu mit hello world](#ubuntu-mit-hello-world)
+     * [Ubuntu mit ping](#ubuntu-mit-ping)
      * [Übung: Java REST-API mit Multi-Stage Dockerfile](#übung-java-rest-api-mit-multi-stage-dockerfile)
-     * [Docker installieren (Ubuntu, apt)](#docker-installieren-ubuntu-apt)
-     * [Bind-Mounts](#bind-mounts)
-     * [Bind-Mounts: Berechtigungen (Rocky/SELinux)](#bind-mounts-berechtigungen-rockyselinux)
-     * [Docker Security Overview](#docker-security-overview)
-     * [Image-Scan mit docker scan (snyk)](#image-scan-mit-docker-scan-snyk)
+     * [Nginx mit content aus html-ordner](#nginx-mit-content-aus-html-ordner)
+  
+  1. Docker-Netzwerk 
+     * [Netzwerk](#netzwerk)
+  
+  1. Docker-Container Examples 
+     * [2 Container mit Netzwerk anpingen](#2-container-mit-netzwerk-anpingen)
+     * [Container mit eigenem privatem Netz erstellen](#container-mit-eigenem-privatem-netz-erstellen)
+  
+  1. Docker-Daten persistent machen / Shared Volumes 
+     * [Überblick](#überblick)
+     * [Volumes](#volumes)
+     * [bind-mounts](#bind-mounts)
+     * [bind-mounts-permissions](#bind-mounts-permissions)
+     
+  1. Docker Compose
+     * [yaml-format](#yaml-format)
+     * [Ist docker-compose installiert?](#ist-docker-compose-installiert)
+     * [Example with Wordpress / MySQL](#example-with-wordpress--mysql)
+     * [Example with Wordpress / Nginx / MariadB](#example-with-wordpress--nginx--mariadb)
+     * [Example with Ubuntu and Dockerfile](#example-with-ubuntu-and-dockerfile)
+     * [Logs in docker - compose](#logs-in-docker---compose)
+     * [docker-compose und replicas](#docker-compose-und-replicas)
+     * [docker compose Reference](https://docs.docker.com/compose/compose-file/compose-file-v3/)
+  
+  1. Docker Security 
+     * [Docker Security](#docker-security)
+     * [Scanning docker image with docker scan/snyx](#scanning-docker-image-with-docker-scansnyx)
 
+  1. Docker - Dokumentation 
+     * [Vulnerability Scanner with docker](https://docs.docker.com/engine/scan/#prerequisites)
+     * [Vulnerability Scanner mit snyk](https://snyk.io/plans/)
+     * [Parent/Base - Image bauen für Docker](https://docs.docker.com/develop/develop-images/baseimages/)
   1. Kubernetes - Überblick
      * [12-Factor-App - Design Prinzipien fuer Cloud Native Anwendungen](#12-factor-app---design-prinzipien-fuer-cloud-native-anwendungen)
      * [Warum Kubernetes, was macht Kubernetes](#warum-kubernetes-was-macht-kubernetes)
@@ -73,10 +118,15 @@
      * [ingress mit traefik, letsencrypt und cert-manager](#ingress-mit-traefik-letsencrypt-und-cert-manager)
      * [cert-manager HTTP-01 Solver: Wo landet die well-known-Datei?](#cert-manager-http-01-solver-wo-landet-die-well-known-datei)
      * [Traefik errors-Middleware: eigenen HTTP-Code/Body bei Backend-Fehlern liefern](#traefik-errors-middleware-eigenen-http-codebody-bei-backend-fehlern-liefern)
+     * [Traefik Dashboard freischalten](#traefik-dashboard-freischalten)
+     * [Traefik-Helm-Release haengt in "pending-upgrade"](#traefik-helm-release-haengt-in-"pending-upgrade")
 
   1. Kubernetes Ingress (HA Proxy)
      * [Install HA Proxy-IngressController](#install-ha-proxy-ingresscontroller)
      * [Ingress mit ha proxy](#ingress-mit-ha-proxy)
+
+  1. Kubernetes Ingress vs. Gateway API (Ausblick)
+     * [Ingress vs. Gateway API - warum der Standard wechselt](#ingress-vs-gateway-api---warum-der-standard-wechselt)
   
   1. Kubernetes Praxis (Stateful Sets)
      * [Hintergrund statefulsets](#hintergrund-statefulsets)
@@ -273,6 +323,7 @@
      * [How does a ServiceMeshs work? (example istio](#how-does-a-servicemeshs-work-example-istio)
      * [istio vs. ingress](#istio-vs-ingress)
      * [istio security features](#istio-security-features)
+     * [Root-CA vor Cluster-Admins schützen (istiod)](#root-ca-vor-cluster-admins-schützen-istiod)
      * [istio-service mesh - ambient mode](#istio-service-mesh---ambient-mode)
      * [Performance comparison - baseline,sidecar,ambient](#performance-comparison---baselinesidecarambient)
 
@@ -584,7 +635,7 @@
 ### Anwendungsfälle 
 
   * Unterschiedliche Versionen einer Applikation (z.B. MariaDB-Server) auf einem Linux-System betreiben
-  * Gute Skalieren zu können (Beispiel: Bestellanzahl steigt (wir brauchen bei Ressourchen für Shop-Katalog und Warenkorb), aber nicht für Registrierung
+  * Gut Skalieren zu können (Beispiel: Bestellanzahl steigt (wir brauchen bei Ressourchen für Shop-Katalog und Warenkorb), aber nicht für Registrierung
     * Sprachagnostik /ein Service in python, einer in Rust 
 
 ### Was sind container images
@@ -634,30 +685,322 @@ cd buildtest
 docker build -t trainerimage:1.0 .
 ```
 
-### Dockerfile - image kleinhalten
+## Docker-Installation
+
+### BEST for Ubuntu : Install Docker from Docker Repo
 
 
-  * Delete all files that are not needed in image 
-
-### Example 
+### Walkthrough 
 
 ```
-### Delete files needed for installation
-### Right after the installation of the necessary 
-## Variante 2
+sudo apt-get update
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```
+
+### Läuft der Dienst (dockerd) 
+
+```
+systemctl status docker 
+```
+
+### docker-compose ? 
+
+```
+## herausfinden, ob docker compose installieren 
+docker compose version 
+```
+
+## Docker-Befehle 
+
+### Die wichtigsten Befehle
+
+
+```
+## docker hub durchsuchen
+docker search hello-world
+
+docker run <image>
+## z.b. // Zieht das image aus docker hub 
+## hub.docker.com 
+docker run hello-world
+
+## images die lokal vorhanden 
+docker images 
+
+## container (laufende) 
+docker container ls 
+## container (vorhanden, aber beendet)
+docker container ls -a 
+
+## z.b hilfe für docker run 
+docker help run 
+
+ 
+
+
+```
+
+### Logs anschauen - docker logs - mit Beispiel nginx
+
+
+### Allgemein 
+```
+## Erstmal nginx starten und container-id wird ausgegeben 
+docker run -d nginx 
+a234
+docker logs a234 # a234 sind die ersten 4 Ziffern der Container ID 
+```
+
+### Laufende Log-Ausgabe 
+
+```
+docker logs -f a234 
+## Abbrechen CTRL + c 
+```
+
+### docker run
+
+
+### Beispiel (binden an ein terminal), detached
+
+```
+## before that we did
+docker pull ubuntu:24.04
+docker run -t -d --name my_ubuntu ubuntu:24.04
+## will wollen überprüfen, ob der container läuft
+docker container ls 
+## image vorhanden 
+docker images
+
+## in den Container reinwechsel 
+docker exec -it my_ubuntu bash 
+docker exec my_ubuntu cat /etc/os-release 
+## 
+
+```
+
+### Docker container/image stoppen/löschen
+
+
+```
+docker stop ubuntu-container 
+## Kill it if it cannot be stopped -be careful
+docker kill ubuntu-container
+
+## Get nur, wenn der Container nicht mehr läuft 
+docker rm ubuntu-container
+
+## oder alternative
+docker rm -f ubuntu-container 
+
+
+## image löschen 
+docker rmi ubuntu:xenial 
+
+## falls Container noch vorhanden aber nicht laufend 
+docker rmi -f ubuntu:xenial 
+
+```
+
+### Docker containerliste anzeigen
+
+
+```
+## besser 
+docker container ls 
+## Alle Container, auch die, die beendet worden sind 
+docker container ls -a 
+
+
+## deprecated 
+docker ps 
+## -a auch solche die nicht mehr laufen 
+docker ps -a
+
+
+
+```
+
+### Docker nicht verwendete Images/Container löschen
+
+### Docker container analysieren
+
+
+```
+docker inspect hello-web # hello-web = container name 
+```
+
+### Docker container in den Vordergrund bringen - attach
+
+
+### docker attach - walkthrough 
+
+```
+docker run -d ubuntu 
+1a4d...
+
+docker attach 1a4d 
+
+## Es ist leider mit dem Aufruf run nicht möglich, den prozess wieder in den Hintergrund zu bringen 
+
+```
+
+### interactiven Prozess nicht beenden (statt exit) 
+
+```
+docker run -it ubuntu bash  
+## ein exit würde jetzt den Prozess beenden
+## exit
+
+## Alternativ ohne beenden (detach) 
+## Geht aber nur beim start mit run -it 
+CTRL + P, dann CTRL + Q 
+
+```
+
+### Reference: 
+
+  * https://docs.docker.com/engine/reference/commandline/attach/
+
+### Aufräumen - container und images löschen
+
+
+### Alle nicht verwendeten container und images löschen 
+
+```
+## Alle container, die nicht laufen löschen 
+docker container prune 
+
+## Alle images, die nicht an eine container gebunden sind, löschen 
+docker images prune 
+
+```
+
+### Nginx mit portfreigabe laufen lassen
+
+
+```
+docker run --name test-nginx -d -p 8080:80 nginx
+
+docker container ls
+lsof -i
+cat /etc/services | grep 8080
+curl http://localhost:8080
+docker container ls
+## wenn der container gestoppt wird, keine ausgabe mehr, weil kein webserver
+docker stop test-nginx 
+curl http://localhost:8080
+
+
+```
+
+## Dockerfile - Examples 
+
+### Ubuntu mit hello world
+
+
+```
+### Schritt 1:
+cd 
+mkdir Hello-World 
+
+
+### Schritt 2:
 ## nano Dockerfile
-FROM ubuntu:22.04
+FROM ubuntu:latest 
+
+COPY hello.sh .
+RUN chmod u+x hello.sh
+CMD ["/hello.sh"]
+
+### Schritt 3:
+nano hello.sh 
+##!/bin/bash
+echo hello-docker
+
+### Schritt 4:
+## docker build -t dockertrainereu/<dein-name>-hello-docker . 
+## Beispiel
+docker build -t dockertrainereu/jm-hello-docker .
+docker run dockertrainereu/<dein-name>-hello-docker 
+
+docker login
+user: dockertrainereu 
+pass: --bekommt ihr vom trainer--
+
+## docker push dockertrainereu/<dein-name>-hello-docker 
+## z.B. 
+docker push dockertrainereu/jm-hello-docker
+
+## und wir schauen online, ob wir das dort finden
+
+```
+
+### Ubuntu mit ping
+
+
+```
+cd 
+mkdir myubuntu 
+cd myubuntu/
+```
+
+```
+nano Dockerfile
+```
+
+
+```
+## nano Dockerfile
+FROM ubuntu:24.04
 RUN apt-get update && \
     apt-get install -y inetutils-ping && \
     rm -rf /var/lib/apt/lists/*
 ## CMD ["/bin/bash"]
-
 ```
 
-### Example 2: Start from scratch 
 
- * https://codeburst.io/docker-from-scratch-2a84552470c8
+```
+docker build -t myubuntu:24.04-ping .
+docker images
+## -t wird benötigt, damit bash WEITER im Hintergrund im läuft.
+## auch mit -d (ohne -t) wird die bash ausgeführt, aber "das Terminal" dann direkt beendet 
+## -> container läuft dann nicht mehr 
+docker run -d -t --name container-ubuntu myubuntu:24.04-ping
+docker container ls
+## in den container reingehen mit dem namen des Containers: container-ubuntu 
+docker exec -it container-ubuntu bash
+ls -la
+```
 
+```
+docker inspect container-ubuntu
+docker inspect container-ubuntu | grep -i "ip"
+```
+
+```
+## Zweiten Container starten
+docker run -d -t --name container-ubuntu2 myubuntu:24.04-ping
+
+## Ersten Container -> 2. anpingen 
+docker exec -it container-ubuntu2 bash 
+## jetzt den container-ubuntu anpingen 
+ping -c4 <ip-von-container-ubuntu>
+```
 
 ### Übung: Java REST-API mit Multi-Stage Dockerfile
 
@@ -672,26 +1015,23 @@ Ein Multi-Stage-Build trennt das **Bauen** einer Anwendung vom **Ausfuehren**:
 Der Compiler, Quellcode und alle Build-Tools landen NICHT im finalen Image - das Image
 wird kleiner und hat eine kleinere Angriffsflaeche.
 
-### Schritt 1: Verbindung zum Docker-Host
+### Schritt 1: Arbeitsverzeichnis anlegen
 
 ```
-ssh -i ~/.ssh/id_ed25519_nopass root@docker11.t3isp.de
+mkdir -p ~/java-api
+cd ~/java-api
 ```
 
-### Schritt 2: Arbeitsverzeichnis anlegen
-
-```
-mkdir -p ~/java-api-<dein-name>
-cd ~/java-api-<dein-name>
-```
-
-### Schritt 3: Die REST-API (Main.java)
+### Schritt 2: Die REST-API (Main.java)
 
 Kein Framework, kein Maven noetig - nur der eingebaute `com.sun.net.httpserver` aus dem
 JDK. Zwei Endpunkte: `/api/health` und `/api/hello`.
 
 ```
-## vi Main.java
+nano Main.java
+```
+
+```
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -749,7 +1089,7 @@ public class Main {
 }
 ```
 
-### Schritt 4: Das Multi-Stage Dockerfile
+### Schritt 3: Das Multi-Stage Dockerfile
 
 ```
 ## vi Dockerfile
@@ -772,29 +1112,29 @@ CMD ["java", "Main"]
 `COPY --from=build` das Muster `Main*.class` verwenden, nicht nur `Main.class` - sonst
 startet der Container mit `NoClassDefFoundError`.
 
-### Schritt 5: Image bauen
+### Schritt 4: Image bauen
 
 ```
-docker build -t java-api-<dein-name>:1.0 .
+docker build -t java-api:1.0 .
 ```
 
-### Schritt 6: Container starten
+### Schritt 5: Container starten
 
 Auf dem geteilten Docker-Host wuerden feste Ports (`-p 8080:8080`) zwischen den
 Teilnehmern kollidieren. Deshalb den Host-Port von Docker zufaellig vergeben lassen:
 
 ```
-docker run -d --name java-api-<dein-name> -p 8080 java-api-<dein-name>:1.0
-docker port java-api-<dein-name> 8080/tcp
+docker run -d --name java-api -p 8080:8080 java-api:1.0
+docker container ls 
 ```
 
-### Schritt 7: API testen
+### Schritt 6: API testen
 
 Den Port aus Schritt 6 einsetzen:
 
 ```
-curl http://localhost:<port>/api/health
-curl http://localhost:<port>/api/hello
+curl http://localhost:8080/api/health
+curl http://localhost:8080/api/hello
 ```
 
 Erwartete Ausgabe:
@@ -804,7 +1144,7 @@ Erwartete Ausgabe:
 {"message":"Hallo von Java!","host":"<container-id>"}
 ```
 
-### Schritt 8 (optional): Groessenvergleich mit Single-Stage
+### Schritt 7 (optional): Groessenvergleich mit Single-Stage
 
 Zum Vergleich ein Image ohne Multi-Stage bauen (JDK + Compiler bleiben mit drin):
 
@@ -819,60 +1159,269 @@ CMD ["java", "Main"]
 ```
 
 ```
-docker build -f Dockerfile.singlestage -t java-api-<dein-name>-singlestage:1.0 .
-docker images java-api-<dein-name>
-docker images java-api-<dein-name>-singlestage
+docker build -f Dockerfile.singlestage -t java-api-singlestage:1.0 .
+docker images java-api
+docker images java-api-singlestage
 ```
 
-Im Test (docker11.t3isp.de, `eclipse-temurin:21-*-alpine`): Multi-Stage-Image ca. **74 MB**,
+Multi-Stage-Image ca. **74 MB**,
 Single-Stage-Image ca. **184 MB** - mehr als doppelt so gross, nur weil Compiler und
 Build-Werkzeuge mitgeschleppt werden.
 
 ### Aufraeumen
 
 ```
-docker rm -f java-api-<dein-name>
-docker rmi java-api-<dein-name>:1.0 java-api-<dein-name>-singlestage:1.0
+docker rm -f java-api
+docker rmi java-api:1.0 java-api-singlestage:1.0
 ```
 
-### Docker installieren (Ubuntu, apt)
+### Nginx mit content aus html-ordner
 
 
-### Walkthrough 
-
-```
-sudo apt-get update
-sudo apt-get install \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
-
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-```
-
-### Läuft der Dienst (dockerd) 
+### Schritt 1: Simple Example 
 
 ```
-systemctl status docker 
+## das gleich wie cd ~
+## Heimatverzeichnis des Benutzers root 
+cd
+mkdir nginx-test
+cd nginx-test
+mkdir html
+cd html/
+## vi index.html
+Text, den du rein haben möchtest 
+
+cd ..
+vi Dockerfile 
+
+FROM nginx:latest
+COPY html /usr/share/nginx/html
+
+## nameskürzel z.B. jm1 
+docker build -t dockertrainereu/jm1-hello-web . 
+docker images
+
 ```
 
-### docker-compose ? 
+
+### Schritt 2: Push build 
 
 ```
-## herausfinden, ob docker compose installieren 
-docker compose version 
+
+## eventually you are not logged in 
+docker login 
+docker push dockertrainereu/jm1-hello-web 
+##aus spass geloescht
+docker rmi dockertrainereu/jm1-hello-web
+
 ```
 
-### Bind-Mounts
+### Schritt 3: dokcer laufen lassen
+
+```
+## und direkt aus der Registry wieder runterladen 
+docker run --name hello-web -p 8080:80 -d dockertrainereu/jm1-hello-web
+
+## laufenden Container anzeigen lassen
+docker container ls 
+## oder alt: deprecated 
+docker ps 
+
+curl http://localhost:8080 
+
+
+## 
+docker rm -f hello-web 
+
+```
+
+## Docker-Netzwerk 
+
+### Netzwerk
+
+
+### Übersicht
+
+```
+3 Typen 
+
+o none
+o bridge (Standard-Netzwerk) 
+o host 
+
+### Additionally possible to install
+o overlay (needed for multi-node)
+
+```
+
+
+### Kommandos 
+
+```
+## Netzwerk anzeigen 
+docker network ls 
+
+## bridge netzwerk anschauen 
+## Zeigt auch ip der docker container an  
+docker inspect bridge
+
+## im container sehen wir es auch
+docker inspect ubuntu-container 
+
+```
+
+### Eigenes Netz erstellen 
+
+```
+docker network create -d bridge test_net 
+docker network ls 
+
+docker container run -d --name nginx --network test_net nginx
+docker container run -d --name nginx_no_net --network none nginx 
+
+docker network inspect none 
+docker network inspect test_net 
+
+docker inspect nginx 
+docker inspect nginx_no_net 
+
+```
+
+### Netzwerk rausnehmen / hinzufügen 
+
+```
+docker network disconnect none nginx_no_net
+docker network connect test_net nginx_no_net 
+
+### Das Löschen von Netzwerken ist erst möglich, wenn es keine Endpoints 
+### d.h. container die das Netzwerk verwenden 
+docker network rm test_net 
+```
+
+
+
+## Docker-Container Examples 
+
+### 2 Container mit Netzwerk anpingen
+
+
+```
+clear
+docker run --name dockerserver1 -dit ubuntu
+docker run --name dockerserver2 -dit ubuntu
+docker network ls
+docker network inspect bridge
+## dockerserver1 - 172.17.0.2
+## dockerserver2 - 172.17.0.3
+docker container ls
+docker exec -it dockerserver1 bash
+## im container 
+apt update; apt install -y iputils-ping 
+ping 172.17.0.3 
+```
+
+### Container mit eigenem privatem Netz erstellen
+
+
+```
+clear
+## use bridge as type
+## docker network create -d bridge test_net
+## by bridge is default 
+docker network create test_net
+docker network ls
+docker network inspect test_net
+
+## Container mit netzwerk starten 
+docker container run -d --name nginx1 --network test_net nginx
+docker network inspect test_net
+
+## Weiteres Netzwerk (bridged) erstellen
+docker network create demo_net
+docker network connect demo_net nginx1
+
+## Analyse 
+docker network inspect demo_net
+docker inspect nginx1
+
+## Verbindung lösen 
+docker network disconnect demo_net nginx1
+
+## Schauen, wir das Netz jetzt aussieht 
+docker network inspect demo_net
+
+```
+
+## Docker-Daten persistent machen / Shared Volumes 
+
+### Überblick
+
+
+### Overview 
+
+```
+bind-mount  # not recommended 
+volumes
+tmpfs 
+```
+
+### Disadvantags 
+
+```
+stored only on one node
+Does not work well in cluster
+
+
+```
+
+### Alternative for cluster 
+
+```
+glusterfs
+cephfs 
+nfs 
+
+## Stichwort
+ReadWriteMany 
+
+
+```
+
+### Volumes
+
+
+### Storage volumes verwalten 
+
+```
+docker volume ls
+docker volume create test-vol
+docker volume ls
+docker volume inspect test-vol
+```
+
+### Storage volumes in container einhängen
+
+```
+docker run -it --name=container-test-vol --mount target=/test_data,source=test-vol ubuntu bash
+1234ad# touch /test_data/README 
+exit
+## stops container 
+
+## create new container and check for /test_data/README 
+docker run -it --name=container-test-vol2 --mount target=/test_data,source=test-vol ubuntu bash
+ab45# ls -la /test_data/README 
+```
+
+### Storage volume löschen 
+
+```
+## Zunächst container löschen 
+docker rm container-test-vol 
+docker rm container-test-vol2
+docker volume rm test-vol
+```
+
+### bind-mounts
 
 
 
@@ -895,7 +1444,7 @@ docker run --rm -p 80:80 -it --name=nginx-test nginx bash
 
 ```
 
-### Bind-Mounts: Berechtigungen (Rocky/SELinux)
+### bind-mounts-permissions
 
 
 ### Step: 1
@@ -929,7 +1478,356 @@ touch foo
 
 ```
 
-### Docker Security Overview
+## Docker Compose
+
+### yaml-format
+
+
+```
+## Kommentare 
+
+## Listen 
+- rot
+- gruen
+- blau 
+
+## Mappings 
+Version: 3.7 
+
+## Mappings können auch Listen enthalten 
+expose: 
+  - "3000"
+  - "8000" 
+
+## Verschachtelte Mappings 
+build:
+  context: .
+  labels: 
+    label1: "bunt"
+    label2: "hell" 
+
+```
+
+### Ist docker-compose installiert?
+
+
+```
+## besser. mehr infos
+docker-compose version 
+docker-compose --version 
+
+```
+
+### Example with Wordpress / MySQL
+
+
+### Walkthrough 
+
+```
+clear
+cd
+mkdir wp
+cd wp
+nano docker-compose.yaml
+```
+
+```
+services:
+  database:
+    image: mysql:5.7
+    volumes:
+      - database_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+
+  wordpress:
+    image: wordpress:latest
+    depends_on: # wartet bis database gestartet ist. NICHT ob sie bereit ist 
+      - database
+    ports:
+      - 8080:80
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: database:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - wordpress_plugins:/var/www/html/wp-content/plugins
+      - wordpress_themes:/var/www/html/wp-content/themes
+      - wordpress_uploads:/var/www/html/wp-content/uploads
+
+volumes:
+  database_data:
+  wordpress_plugins:
+  wordpress_themes:
+  wordpress_uploads:
+
+
+```
+
+
+```
+docker compose version
+docker compose up -d  # alle services im docker-compose.yaml starten und im
+                      # Hintergrund laufen lassen
+docker compose logs   # Alle Logs dieses Projektes
+docker compose ps     # alle container die zu diesem Projekt gehören
+docker compose down
+## bitte keine start und stop -> immer stattdessen up und down
+```
+
+```
+## Im Browser mit ip des server -> ip a show eth0 # hier die externe ip raussuchen
+http://<ip-des-servers>:8080
+```
+
+### Healthcheck - Variante 1: database läuft (vom db-container aus erreichbar)
+
+
+```
+nano docker-compose.yaml
+## CTRL/STRG + K -> alte Fassung rausloeschen 
+```
+
+```
+## docker-compose.yaml
+
+services:
+  database:
+    image: mysql:5.7
+    volumes:
+      - database_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  wordpress:
+    image: wordpress:latest
+    depends_on:
+      database:
+        condition: service_healthy   # wartet, bis database bereit ist
+    ports:
+      - 8080:80
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: database:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - wordpress_plugins:/var/www/html/wp-content/plugins
+      - wordpress_themes:/var/www/html/wp-content/themes
+      - wordpress_uploads:/var/www/html/wp-content/uploads
+
+volumes:
+  database_data:
+  wordpress_plugins:
+  wordpress_themes:
+  wordpress_uploads:
+
+```
+
+### Healthcheck - Variante 2 (vom container database UND von wordpress erreichbar) 
+
+```
+## docker-compose.yaml
+
+services:
+  database:
+    image: mysql:5.7
+    volumes:
+      - database_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+
+  wordpress:
+    image: wordpress:latest
+    depends_on:
+      - database                     # Startreihenfolge, wartet NICHT auf Bereitschaft
+    ports:
+      - 8080:80
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: database:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    # Wartet, bis WordPress die DB mit seinen eigenen Zugangsdaten erreicht
+    entrypoint:
+      - bash
+      - -c
+      - |
+        until php -r '$$c = @new mysqli("database", getenv("WORDPRESS_DB_USER"), getenv("WORDPRESS_DB_PASSWORD")); exit($$c->connect_errno ? 1 : 0);'; do
+          echo "warte auf database..."
+          sleep 2
+        done
+        exec docker-entrypoint.sh apache2-foreground
+    volumes:
+      - wordpress_plugins:/var/www/html/wp-content/plugins
+      - wordpress_themes:/var/www/html/wp-content/themes
+      - wordpress_uploads:/var/www/html/wp-content/uploads
+
+volumes:
+  database_data:
+  wordpress_plugins:
+  wordpress_themes:
+  wordpress_uploads:
+```
+
+### Example with Wordpress / Nginx / MariadB
+
+
+```
+mkdir wordpress-mit-docker-compose 
+cd wordpress-mit-docker-compose 
+## nano docker-compose.yml 
+version: "3.7"
+
+services:
+    database:
+        image: mysql:5.7
+        volumes:
+            - database_data:/var/lib/mysql
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: mypassword
+            MYSQL_DATABASE: wordpress
+            MYSQL_USER: wordpress
+            MYSQL_PASSWORD: wordpress
+
+    wordpress:
+        image: wordpress:latest
+        depends_on:
+            - database
+        ports:
+            - 8080:80
+        restart: always
+        environment:
+            WORDPRESS_DB_HOST: database:3306
+            WORDPRESS_DB_USER: wordpress
+            WORDPRESS_DB_PASSWORD: wordpress
+        volumes:
+            - wordpress_plugins:/var/www/html/wp-content/plugins
+            - wordpress_themes:/var/www/html/wp-content/themes
+            - wordpress_uploads:/var/www/html/wp-content/uploads
+volumes:
+    database_data:
+    wordpress_plugins:
+    wordpress_themes:
+    wordpress_uploads:
+
+
+### now start the system
+docker-compose up -d 
+### we can do some test if db is reachable 
+docker exec -it wordpress_compose_wordpress_1 bash 
+### within shell do 
+apt update 
+apt-get install -y telnet
+## this should work 
+telnet database 3306
+
+## and we even have logs
+docker-compose logs 
+```
+
+### Example with Ubuntu and Dockerfile
+
+
+```
+cd
+mkdir bautest
+cd bautest 
+```
+
+```
+## nano docker-compose.yml
+services:
+  myubuntu:
+    build: ./myubuntu
+    restart: always
+```
+
+```
+mkdir myubuntu 
+cd myubuntu 
+nano Dockerfile
+```
+
+```
+FROM ubuntu:latest
+RUN apt-get update; apt-get install -y inetutils-ping
+CMD ["/bin/bash"]
+```
+
+```
+cd ../
+ls -la 
+## wichtig, im docker-compose - Ordner seiend 
+docker compose up -d 
+## wird image gebaut und container gestartet 
+
+## Bei Veränderung vom Dockerfile, muss man den Parameter --build mitangeben 
+docker compose up -d --build 
+```
+
+### Logs in docker - compose
+
+
+```
+##Im Ordner des Projektes
+##z.B wordpress-mysql-compose-project 
+cd ~/wordpress-mysql-compose-project 
+docker-compose logs
+## jetzt werden alle logs aller services angezeigt 
+```
+
+### docker-compose und replicas
+
+
+### Beispiel 
+
+```
+version: "3.9"
+services:
+  redis:
+    image: redis:latest
+    deploy:
+      replicas: 1
+    configs:
+      - my_config
+      - my_other_config
+configs:
+  my_config:
+    file: ./my_config.txt
+  my_other_config:
+    external: true
+```
+### Ref:
+
+  * https://docs.docker.com/compose/compose-file/compose-file-v3/
+
+### docker compose Reference
+
+  * https://docs.docker.com/compose/compose-file/compose-file-v3/
+
+## Docker Security 
+
+### Docker Security
 
 
 ### Run container under specific user: 
@@ -993,7 +1891,7 @@ docker compose down
   * https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick
   * man capabilities
 
-### Image-Scan mit docker scan (snyk)
+### Scanning docker image with docker scan/snyx
 
 
 ### Prerequisites 
@@ -1011,6 +1909,20 @@ You need to be logged in on docker hub with docker login
 docker help scan
 docker scan --json --accept-license dockertrainereu/jm-hello-docker  > result.json
 ```
+
+## Docker - Dokumentation 
+
+### Vulnerability Scanner with docker
+
+  * https://docs.docker.com/engine/scan/#prerequisites
+
+### Vulnerability Scanner mit snyk
+
+  * https://snyk.io/plans/
+
+### Parent/Base - Image bauen für Docker
+
+  * https://docs.docker.com/develop/develop-images/baseimages/
 
 ## Kubernetes - Überblick
 
@@ -1666,6 +2578,7 @@ ls -la
 
 ```
 kubectl cluster-info
+kubectl config view
 ```
 
 ### Arbeitsbereich konfigurieren 
@@ -2032,7 +2945,6 @@ spec:
       tier: frontend
   template:
     metadata:
-      name: template-nginx-replica-set
       labels:
         tier: frontend
     spec:
@@ -2164,6 +3076,11 @@ kubectl apply -f . && watch kubectl get pods
 kubectl apply -f . && kubectl get all && kubectl get pods -w
 ```
 
+### Deployment löschen 
+
+```
+kubectl delete -f .
+```
 
 ### Netzwerkverbindung zum Pod testen
 
@@ -2919,7 +3836,7 @@ nano 02-external-endpoint.yml
 ```
 helm repo add traefik https://traefik.github.io/charts
 
-helm upgrade -n ingress --install traefik traefik/traefik --version 40.3.0 --create-namespace --skip-crds --reset-values
+helm upgrade -n ingress --install traefik traefik/traefik --version 41.6.0 --create-namespace --skip-crds --reset-values
 
 kubectl -n ingress get pods
 kubectl -n ingress get svc
@@ -4131,6 +5048,304 @@ kubectl delete -f .
   Ingress-Objekten baut (relevant für das Verständnis, warum ein fehlender Router keine Middleware
   durchläuft).
 
+### Traefik Dashboard freischalten
+
+
+Traefik hat ein eingebautes Web-Dashboard, das Router, Services, Middlewares und
+Zertifikate live anzeigt. Im offiziellen Helm-Chart (`traefik/traefik`, Version 41.6.0)
+ist `api.dashboard: true` bereits der **Standard** - das Dashboard existiert also
+intern immer. Es ist nur standardmaessig **nicht erreichbar**, weil keine Route darauf
+zeigt.
+
+**Wichtig:** Das Dashboard hat von Haus aus kein Login. Wer draufkommt, sieht die
+komplette Routing-Konfiguration des Clusters. Nie ohne Schutz oeffentlich exponieren.
+
+### Hintergrund: welcher Port, welcher Modus
+
+```
+kubectl -n ingress get pod -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].spec.containers[0].ports}'
+```
+
+```
+[{"containerPort":9100,"name":"metrics"},{"containerPort":8080,"name":"traefik"},{"containerPort":8000,"name":"web"},{"containerPort":8443,"name":"websecure"}]
+```
+
+Der interne Port fuer Dashboard/API heisst `traefik` (Container-Port `8080`) - **nicht**
+`9000`, wie in aelteren Traefik-Versionen/Bloegen oft zu lesen ist. Dieser Port ist im
+Kubernetes-Service standardmaessig nicht exponiert (`kubectl -n ingress get svc traefik`
+zeigt nur `web` und `websecure`).
+
+Zwei Modi steuern die Erreichbarkeit:
+
+| Setting | Wirkung |
+|---|---|
+| `api.insecure: false` (Standard) | Dashboard-Router existiert, ist aber an **keinem** Entrypoint gebunden - Zugriff nur ueber eine explizit angelegte `IngressRoute` |
+| `api.insecure: true` | Dashboard wird zusaetzlich **unauthenticated** direkt am `traefik`-Entrypoint (8080) exponiert - nur fuer schnelles lokales Debugging, nie in Produktion |
+
+### Variante 1: Port-Forward direkt auf den Pod (Training/Debugging)
+
+Schnellster Weg, ohne irgendetwas an der Konfiguration zu aendern - **funktioniert nur
+mit `api.insecure: true`**, siehe Tabelle oben:
+
+```
+helm upgrade traefik traefik/traefik -n ingress --version 41.6.0 --reuse-values --set api.insecure=true
+
+kubectl -n ingress port-forward $(kubectl -n ingress get pod -l app.kubernetes.io/name=traefik -o name) 8080:8080
+```
+
+Dashboard dann unter `http://localhost:8080/dashboard/` (abschliessender Slash ist
+Pflicht). Getestet: liefert `HTTP 200` und echte Live-Daten (`/api/overview`).
+
+Danach unbedingt wieder deaktivieren:
+
+```
+helm upgrade traefik traefik/traefik -n ingress --version 41.6.0 --reuse-values --set api.insecure=false
+```
+
+**Achtung:** `helm upgrade` ohne `--reset-values` behaelt frueher per `--set` gesetzte
+Werte automatisch bei (kein automatisches Zuruecksetzen auf Chart-Defaults) - deshalb
+hier `--set api.insecure=false` explizit gegensetzen, nicht einfach ohne Flags
+upgraden.
+
+### Variante 2: IngressRoute mit BasicAuth (dauerhaft, sicher)
+
+Fuer dauerhaften Zugriff ueber eine normale Domain, abgesichert per BasicAuth-Middleware.
+Live getestet mit `curl` gegen den Ingress-LoadBalancer:
+
+```
+htpasswd -nb admin 'starkesPasswort' > authfile.txt
+
+kubectl -n ingress create secret generic dashboard-basic-auth --from-file=users=authfile.txt
+```
+
+```
+nano middleware.yml
+```
+
+```
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-auth
+  namespace: ingress
+spec:
+  basicAuth:
+    secret: dashboard-basic-auth
+```
+
+```
+nano ingressroute.yml
+```
+
+```
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: ingress
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`dashboard-<dein-name>.appv2.do.t3isp.de`) && PathPrefix(`/dashboard`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
+      middlewares:
+        - name: dashboard-auth
+    - match: Host(`dashboard-<dein-name>.appv2.do.t3isp.de`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
+      middlewares:
+        - name: dashboard-auth
+```
+
+```
+kubectl apply -f middleware.yml -f ingressroute.yml
+```
+
+Test:
+
+```
+curl -i http://dashboard-<dein-name>.appv2.do.t3isp.de/dashboard/
+## ohne Auth -> 401
+
+curl -u admin:starkesPasswort -i http://dashboard-<dein-name>.appv2.do.t3isp.de/dashboard/
+## mit korrektem Passwort -> 200
+```
+
+Erwartetes Verhalten (live verifiziert):
+
+| Request | Ergebnis |
+|---|---|
+| ohne Auth | `401` |
+| falsches Passwort | `401` |
+| korrektes Passwort | `200`, `/api/overview` liefert echte Router/Service-Zahlen |
+
+**Hinweis `/api`-Route:** Der Pfad `/dashboard` liefert nur die statische UI. Die UI
+laedt ihre Daten von `/api/...` nach - deshalb braucht es **beide** Routen
+(`/dashboard` und `/api`), sonst bleibt das Dashboard leer/fehlerhaft.
+
+### Aufraeumen (Testressourcen)
+
+```
+kubectl -n ingress delete ingressroute traefik-dashboard
+kubectl -n ingress delete middleware dashboard-auth
+kubectl -n ingress delete secret dashboard-basic-auth
+```
+
+### Zusammenfassung
+
+* `api.dashboard: true` ist im Traefik-Helm-Chart bereits **Standard** - das Dashboard
+  muss nicht "aktiviert" werden, sondern nur erreichbar gemacht werden.
+* Interner Port ist `8080` (Name `traefik`), nicht `9000`.
+* `api.insecure: true` exponiert das Dashboard unauthenticated - nur fuer kurzes,
+  lokales Debugging per Port-Forward, danach sofort wieder deaktivieren.
+* Fuer dauerhaften/produktiven Zugriff: eigene `IngressRoute` auf den internen Service
+  `api@internal`, abgesichert mit einer BasicAuth-`Middleware` - beide Pfade
+  `/dashboard` und `/api` freigeben.
+* `helm upgrade` ohne `--reset-values` behaelt zuvor per `--set` gesetzte Werte bei -
+  zum gezielten Zuruecksetzen den Gegenwert explizit setzen oder `--reset-values`
+  verwenden.
+
+### Referenzen
+
+* [Traefik Doku: Dashboard](https://doc.traefik.io/traefik/operations/dashboard/)
+* [Traefik Doku: API](https://doc.traefik.io/traefik/operations/api/)
+
+### Traefik-Helm-Release haengt in "pending-upgrade"
+
+
+Frage aus dem Training: `helm list` zeigt den Traefik-Release dauerhaft als
+`pending-upgrade` an, obwohl der Pod laeuft. Was ist da los und wie wird man das los?
+
+**Live verifiziert** gegen einen echten DOKS-Cluster (Traefik-Chart 41.6.0).
+
+### Symptom
+
+```
+helm list -A --all
+```
+
+```
+NAME     NAMESPACE  REVISION  STATUS           CHART           APP VERSION
+traefik  ingress    6         pending-upgrade  traefik-41.6.0  v3.7.13
+```
+
+Jeder weitere `helm upgrade`/`helm rollback` schlaegt fehl mit:
+
+```
+Error: UPGRADE FAILED: another operation (install/upgrade/rollback) is in progress
+```
+
+### Ursache
+
+Ein `helm upgrade`-Lauf wurde mittendrin unterbrochen (Terminal-/SSH-Verbindung weg,
+Ctrl+C, CI-Job-Timeout/-Kill), **bevor** Helm den Vorgang als `Upgrade complete`
+(Erfolg) abschliessen konnte. Die Revision bleibt dauerhaft bei `Preparing upgrade`
+haengen - Helm 3 hat dafuer keinen automatischen Timeout.
+
+```
+helm history traefik -n ingress
+```
+
+```
+REVISION  STATUS           DESCRIPTION
+5         superseded       Upgrade complete
+6         pending-upgrade  Preparing upgrade
+```
+
+**Wichtig:** Das betrifft nur die Helm-Metadaten. Der tatsaechliche
+Kubernetes-Rollout kann davon voellig unberuehrt sein - erst pruefen, bevor man von
+einem echten Incident ausgeht:
+
+```
+kubectl -n ingress get deploy,pods
+kubectl -n ingress rollout status deploy/traefik
+```
+
+Im Testfall war der Pod die ganze Zeit `1/1 Running`, Rollout `successfully rolled
+out` - reines Metadaten-Problem.
+
+### Falscher Fix (kursiert online, wirkt aber nicht)
+
+Oft empfohlen, aber wirkungslos: nur das Label des Release-Secrets patchen.
+
+```
+kubectl patch secret sh.helm.release.v1.traefik.v6 -n ingress -p '{"metadata": {"labels": {"status": "failed"}}}'
+```
+
+Das Label ist nur Metadaten fuer `kubectl`-Selektoren. Der Status, den Helm fuer
+Locking/Pending-Checks tatsaechlich auswertet, steckt gzip+base64-codiert als
+Protobuf im Feld `data.release` desselben Secrets. Ein Label-Patch aendert daran
+nichts - getestet, `helm upgrade` schlug danach weiterhin mit dem Lock-Fehler fehl.
+
+### Tatsaechlicher Fix: haengendes Release-Secret loeschen
+
+Voraussetzung: Pod/Deployment laeuft bereits sauber (siehe oben geprueft). Dann reicht
+es, das Secret der haengenden Revision zu loeschen. Helm faellt danach automatisch auf
+die letzte tatsaechlich `deployed` Revision zurueck:
+
+```
+kubectl -n ingress get secrets -l "owner=helm,name=traefik"
+
+kubectl -n ingress delete secret sh.helm.release.v1.traefik.v6
+
+helm upgrade traefik traefik/traefik -n ingress --version 41.6.0
+```
+
+Ergebnis im Test:
+
+```
+Release "traefik" has been upgraded. Happy Helming!
+STATUS: deployed
+REVISION: 6
+```
+
+```
+helm list -n ingress
+```
+
+```
+NAME     NAMESPACE  REVISION  STATUS    CHART           APP VERSION
+traefik  ingress    6         deployed  traefik-41.6.0  v3.7.13
+```
+
+**Hinweis:** `helm list` (ohne `--all`) zeigt direkt nach dem Loeschen der haengenden
+Revision und vor dem erneuten Upgrade kurzzeitig **gar nichts** an - weil auch die
+vorherige Revision intern bereits als `superseded` markiert war und keine Revision
+mehr den Status `deployed` traegt. Das ist rein kosmetisch und loest sich mit dem
+naechsten erfolgreichen Upgrade von selbst.
+
+### Alternative: Rollback statt Secret loeschen
+
+```
+helm rollback traefik 5 -n ingress
+```
+
+Funktioniert oft **nicht**, solange der `pending-upgrade`-Lock noch aktiv ist - Helm
+blockiert auch Rollbacks damit. In dem Fall bleibt nur das Loeschen des
+Release-Secrets.
+
+### Zusammenfassung
+
+* `pending-upgrade` = abgebrochener `helm upgrade`, kein automatischer Timeout in
+  Helm 3.
+* Erst den echten Cluster-Zustand pruefen (`kubectl get deploy,pods`) - oft ist nur
+  Helms Metadaten-Zustand betroffen, keine echte Stoerung.
+* Label-Patch auf dem Release-Secret **wirkt nicht** - der massgebliche Status steckt
+  im codierten `data.release`-Feld.
+* Wirksamer Fix: Secret der haengenden Revision loeschen (`sh.helm.release.v1.<release>.v<rev>`),
+  danach normal upgraden.
+* `helm rollback` kann am selben Lock scheitern wie `helm upgrade`.
+
+### Referenzen
+
+* [Helm Doku: Release-Status](https://helm.sh/docs/intro/using_helm/#helpful-options-for-install-upgrade-rollback)
+
 ## Kubernetes Ingress (HA Proxy)
 
 ### Install HA Proxy-IngressController
@@ -4456,6 +5671,36 @@ http://jochen.app.do.t3isp.de/banana
 ## geht nicht 
 http://jochen.app.do.t3isp.de/banana/nix
 ```
+
+## Kubernetes Ingress vs. Gateway API (Ausblick)
+
+### Ingress vs. Gateway API - warum der Standard wechselt
+
+
+### Welche Objekte braucht man?
+
+![Welche Objekte braucht man?](img/ingress-vs-gateway-api-objekte.svg)
+
+### Was kann Ingress, was kann die Gateway API?
+
+| Feature | Ingress | Gateway API |
+|---|---|---|
+| Host-/Pfad-Routing | ✅ | ✅ |
+| Header-/Query-Matching | ⚠️ nur per Annotation | ✅ nativ |
+| Traffic-Splitting / Weighting | ⚠️ nur per Annotation | ✅ nativ |
+| Redirects / URL-Rewrites | ⚠️ nur per Annotation | ✅ nativ |
+| TLS-Terminierung | ✅ | ✅ |
+| TCP/UDP/gRPC-Routing | ❌ | ✅ (`TCPRoute`, `GRPCRoute`) |
+| Cross-Namespace-Routing | ❌ | ✅ (`ReferenceGrant`) |
+| Portabilität zwischen Controllern | gering (Annotationen sind nicht standardisiert) | hoch (Kernfelder sind Standard) |
+| Weiterentwicklung | [eingefroren](https://kubernetes.io/docs/concepts/services-networking/ingress/) | aktiv |
+
+### Praxis in diesem Training
+
+Die Ingress-Übungen mit Traefik ([Install](#install-traefik-ingresscontroller),
+[Beispiel](#ingress-mit-traefik)) bleiben
+gültig — Ingress ist GA und in den meisten Clustern noch der Alltag. Die Gateway API
+ist der Blick nach vorn.
 
 ## Kubernetes Praxis (Stateful Sets)
 
@@ -6301,7 +7546,7 @@ cd ..
 
 ```
 ## Testen 
-helm upgrade --install my-mariadb oci://registry-1.docker.io/cloudpirates/mariadb --reset-values --version 0.5.3 --dry-run -f prod/values.yaml  
+helm upgrade --install my-mariadb oci://registry-1.docker.io/cloudpirates/mariadb --reset-values --version 0.5.3 --dry-run=server -f prod/values.yaml  
 ```
 
 ```
@@ -6418,6 +7663,10 @@ helm get values my-mariadb
 ```
 
 #### Änderung zwischen versionen (Warum trat der Fehler auf) 
+
+```
+helm history my-mariadb
+```
 
 ```
 helm get manifest my-mariadb --revision 2 > rev2.yaml
@@ -18085,6 +19334,53 @@ It provides a standardized approach to manage and orchestrate communication with
 ![image](https://github.com/user-attachments/assets/2fce84cf-4483-4772-aabf-c27d099e303e)
 
 
+### Root-CA vor Cluster-Admins schützen (istiod)
+
+
+### Kann ich das bei istiod einrichten?
+
+Ja, aber nicht mit der Default-Konfiguration – istiod hat von Haus aus eine eingebaute Self-Signed-CA (Citadel), die Root **und** Intermediate selbst hält, als Kubernetes-Secret `istio-ca-secret` im Namespace `istio-system`. Genau das gilt es zu vermeiden. Drei Reifegrade:
+
+#### Stufe 1: "Plugged-in" Intermediate-CA (einfachste Verbesserung)
+
+Istio unterstützt nativ, dass istiod nur eine selbst erzeugte **Intermediate-CA** bekommt (Root bleibt extern):
+
+```bash
+kubectl create secret generic cacerts -n istio-system \
+  --from-file=ca-cert.pem \
+  --from-file=ca-key.pem \
+  --from-file=root-cert.pem \
+  --from-file=cert-chain.pem
+```
+
+- ✅ Root-Key liegt nie im Cluster.
+- ❌ Der Intermediate-Key liegt weiterhin als normales K8s-Secret im Cluster – ein Node-Root-Admin kommt weiterhin dran. Begrenzt nur den Schaden (Intermediate rotierbar, Root bleibt sauber).
+
+#### Stufe 2: `cert-manager` + `istio-csr` (Standard-Empfehlung für Production)
+
+istiod hält gar keinen privaten Schlüssel mehr selbst, sondern reicht CSRs an [`cert-manager-istio-csr`](https://cert-manager.io/docs/usage/istio-csr/) weiter. `cert-manager` ist an einen beliebigen **Issuer** angebunden:
+
+- Vault-Issuer (Vault mit Auto-Unseal via Cloud-KMS)
+- AWS Private CA / Google Certificate Authority Service (Cloud-HSM-backed)
+- Venafi oder andere Enterprise-PKI
+
+Der Cluster-Admin sieht dann nie einen privaten CA-Key als Kubernetes-Secret – der Signiervorgang passiert komplett extern, nur das fertige, kurzlebige Zertifikat kommt zurück in den Pod.
+
+#### Stufe 3: SPIRE statt istiod-eigener CA
+
+Istio kann so konfiguriert werden, dass es SPIRE als Identity-Provider nutzt statt der eingebauten Citadel-CA. SPIRE Server unterstützt **UpstreamAuthority-Plugins** direkt für HSM (PKCS#11), AWS KMS, GCP KMS etc. – der Root-Key verlässt nie das HSM, egal wer Node-Root auf dem SPIRE-Server hat.
+
+#### Übersicht
+
+| Stufe | Root-Schutz | Aufwand |
+|---|---|---|
+| Default istiod | ❌ keiner | 0 |
+| Plugged-in Intermediate | ✅ Root, ❌ Intermediate | gering |
+| `cert-manager` + `istio-csr` + Vault/Cloud-CA | ✅ vollständig | mittel |
+| SPIRE + HSM-UpstreamAuthority | ✅ vollständig, maximal auditierbar | höher |
+
+**Empfehlung für die meisten produktiven Setups:** `cert-manager` + `istio-csr` + Vault (oder Cloud-CA) als Sweet Spot zwischen Aufwand und Sicherheit.
+
 ### istio-service mesh - ambient mode
 
 
@@ -24179,7 +25475,6 @@ spec:
       tier: frontend
   template:
     metadata:
-      name: template-nginx-replica-set
       labels:
         tier: frontend
     spec:
@@ -24311,6 +25606,11 @@ kubectl apply -f . && watch kubectl get pods
 kubectl apply -f . && kubectl get all && kubectl get pods -w
 ```
 
+### Deployment löschen 
+
+```
+kubectl delete -f .
+```
 
 ### kubectl/manifest/service
 
