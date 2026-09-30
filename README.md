@@ -318,6 +318,7 @@
      * [How does a ServiceMeshs work? (example istio](/istio/overview/overview-classic-sidecar.md)
      * [istio vs. ingress](istio/00-istio-vs-ingress.md)
      * [istio security features](istio/overview/security-features.md)
+     * [Root-CA vor Cluster-Admins schützen (istiod)](istio/overview/root-ca-schutz-vor-cluster-admin.md)
      * [istio-service mesh - ambient mode](/istio/overview/ambient-mode.md)
      * [Performance comparison - baseline,sidecar,ambient](/istio/overview/performance-comparison-baseline-sidecar-ambient.md)
 
